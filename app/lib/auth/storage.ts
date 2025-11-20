@@ -1,48 +1,20 @@
 import * as SecureStore from "expo-secure-store";
 
-const ACCESS_KEY = "qoribet_access_token";
-const REFRESH_KEY = "qoribet_refresh_token";
+const ACCESS_TOKEN_KEY = "access_token";
+const REFRESH_TOKEN_KEY = "refresh_token";
 
-export async function setStoredTokens(tokens: { accessToken: string; refreshToken?: string }) {
-    try {
-        await SecureStore.setItemAsync(ACCESS_KEY, tokens.accessToken);
-        if (tokens.refreshToken) await SecureStore.setItemAsync(REFRESH_KEY, tokens.refreshToken);
-    } catch (e) {
-        // fallback for web/dev
-        if (typeof window !== "undefined") {
-            localStorage.setItem(ACCESS_KEY, tokens.accessToken);
-            if (tokens.refreshToken) localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
-        }
-    }
-}
+export const setStoredTokens = async (accessToken: string, refreshToken: string) => {
+    await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
+    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+};
 
-export async function getStoredTokens(): Promise<{ accessToken: string; refreshToken?: string } | null> {
-    try {
-        const accessToken = await SecureStore.getItemAsync(ACCESS_KEY);
-        if (!accessToken) {
-            if (typeof window !== "undefined") {
-                const a = localStorage.getItem(ACCESS_KEY);
-                const r = localStorage.getItem(REFRESH_KEY);
-                if (!a) return null;
-                return { accessToken: a, refreshToken: r ?? undefined };
-            }
-            return null;
-        }
-        const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
-        return { accessToken, refreshToken: refreshToken ?? undefined };
-    } catch (e) {
-        return null;
-    }
-}
+export const getStoredTokens = async () => {
+    const access = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+    const refresh = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    return access && refresh ? { access, refresh } : null;
+};
 
-export async function clearStoredTokens() {
-    try {
-        await SecureStore.deleteItemAsync(ACCESS_KEY);
-        await SecureStore.deleteItemAsync(REFRESH_KEY);
-    } catch (e) {
-        if (typeof window !== "undefined") {
-            localStorage.removeItem(ACCESS_KEY);
-            localStorage.removeItem(REFRESH_KEY);
-        }
-    }
-}
+export const clearStoredTokens = async () => {
+    await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+};
