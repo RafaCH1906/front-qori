@@ -49,31 +49,31 @@ export const lightColors: ThemeColors = {
 export const darkColors: ThemeColors = {
   primary: {
     DEFAULT: "#ffc627",
-    foreground: "#0f0f1e",
+    foreground: "#000000",
   },
   accent: {
     DEFAULT: "#3b82f6",
-    foreground: "#0f0f1e",
+    foreground: "#000000",
   },
-  background: "#0f0f1e",
+  background: "#0a0a0f",
   foreground: "#f0f0f5",
   card: {
-    DEFAULT: "#1a1a2e",
+    DEFAULT: "#12121a",
     foreground: "#f0f0f5",
   },
-  border: "#2e2e4e",
-  input: "#252540",
+  border: "#1a1a24",
+  input: "#1a1a24",
   ring: "#ffc627",
   destructive: {
     DEFAULT: "#f87171",
-    foreground: "#1a1a2e",
+    foreground: "#12121a",
   },
   muted: {
-    DEFAULT: "#1f1f3a",
-    foreground: "#a0a0c2",
+    DEFAULT: "#1a1a24",
+    foreground: "#8a8a9e",
   },
   secondary: {
-    DEFAULT: "#2b2b45",
+    DEFAULT: "#1a1a24",
     foreground: "#f0f0f5",
   },
 };

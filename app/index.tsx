@@ -121,29 +121,25 @@ function IndexScreen() {
         onRegisterClick={() => handleAuthOpen("register")}
       />
 
-      <View
-        style={[
-          styles.mainContainer,
+      <ScrollView
+        style={styles.mainContainer}
+        contentContainerStyle={[
           isLargeScreen ? styles.mainRow : styles.mainColumn,
+          !isLargeScreen && {
+            paddingBottom: mobileContentPadding,
+          },
         ]}
+        showsVerticalScrollIndicator={isLargeScreen}
       >
-        {/* Main Content - Scrollable */}
-        <ScrollView
-          style={styles.contentScroll}
-          contentContainerStyle={[
-            styles.contentScrollContent,
-            !isLargeScreen && {
-              paddingBottom: mobileContentPadding,
-            },
-          ]}
-        >
+        {/* Main Content (LEFT SIDE) */}
+        <View style={styles.contentWrapper}>
           <BettingContent
             onAddBet={handleAddBet}
             onOpenMatch={handleOpenMatch}
           />
-        </ScrollView>
+        </View>
 
-        {/* Bet Slip Sidebar - Fixed width on larger screens */}
+        {/* Bet Slip Sidebar - Fixed width on larger screens (RIGHT SIDE) */}
         {isLargeScreen && (
           <View style={styles.betSlipContainer}>
             <BetSlip
@@ -153,7 +149,7 @@ function IndexScreen() {
             />
           </View>
         )}
-      </View>
+      </ScrollView>
 
       {/* Mobile Bet Slip Bottom Drawer */}
       {!isLargeScreen && (
@@ -230,8 +226,12 @@ const createStyles = (colors: ThemeColors) =>
     },
     mainRow: {
       flexDirection: "row",
-      padding: spacing.lg,
+      paddingVertical: spacing.lg,
+      paddingLeft: spacing.xl * 3,
+      paddingRight: spacing.xl * 3,
       gap: spacing.lg,
+      maxWidth: 1800,
+      marginHorizontal: "auto",
     },
     mainColumn: {
       flexDirection: "column",
@@ -239,14 +239,14 @@ const createStyles = (colors: ThemeColors) =>
       paddingVertical: spacing.md,
       gap: spacing.md,
     },
-    contentScroll: {
+    contentWrapper: {
       flex: 1,
-    },
-    contentScrollContent: {
-      paddingBottom: spacing.xl,
+      maxWidth: 1000,
+      paddingRight: spacing.lg,
     },
     betSlipContainer: {
-      width: 320,
+      width: 450,
+      maxHeight: "100%",
     },
     mobileBetSlipPortal: {
       position: "absolute",

@@ -80,7 +80,7 @@ export default function BetSlip({
   };
 
   return (
-    <Card style={styles.card}>
+    <View style={styles.container}>
       {showHeader && (
         <View style={styles.header}>
           <Text style={styles.headerText}>My Bets</Text>
@@ -88,112 +88,124 @@ export default function BetSlip({
       )}
 
       {bets.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No bets selected yet</Text>
-          <Text style={styles.emptySubText}>
-            Select odds from matches to add bets
-          </Text>
-        </View>
+        <Card style={styles.card}>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No bets selected yet</Text>
+            <Text style={styles.emptySubText}>
+              Select odds from matches to add bets
+            </Text>
+          </View>
+        </Card>
       ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <View style={styles.betsContainer}>
-            {bets.map((bet) => (
-              <View key={bet.id} style={styles.betItem}>
-                <View style={styles.betContent}>
-                  <View
-                    style={[
-                      styles.categoryBadge,
-                      getCategoryBadgeStyle(bet.betType),
-                    ]}
-                  >
-                    <Text style={styles.categoryText}>
-                      {getCategoryLabel(bet.betType)}
+        <Card style={styles.card}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={true}
+          >
+            <View style={styles.betsContainer}>
+              {bets.map((bet) => (
+                <View key={bet.id} style={styles.betItem}>
+                  <View style={styles.betContent}>
+                    <View
+                      style={[
+                        styles.categoryBadge,
+                        getCategoryBadgeStyle(bet.betType),
+                      ]}
+                    >
+                      <Text style={styles.categoryText}>
+                        {getCategoryLabel(bet.betType)}
+                      </Text>
+                    </View>
+                    <Text style={styles.matchText} numberOfLines={1}>
+                      {bet.match}
+                    </Text>
+                    <Text style={styles.betDetailsText}>
+                      {getTypeLabel(bet)} @ {bet.odds.toFixed(2)}
                     </Text>
                   </View>
-                  <Text style={styles.matchText} numberOfLines={1}>
-                    {bet.match}
-                  </Text>
-                  <Text style={styles.betDetailsText}>
-                    {getTypeLabel(bet)} @ {bet.odds.toFixed(2)}
+                  <TouchableOpacity onPress={() => onRemoveBet(bet.id)}>
+                    <Ionicons
+                      name="close-circle"
+                      size={24}
+                      color={colors.destructive.DEFAULT}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.stakeContainer}>
+              <View style={styles.stakeSection}>
+                <Text style={styles.sectionLabel}>Stake (Soles)</Text>
+                <Input
+                  value={stake}
+                  onChangeText={setStake}
+                  placeholder="Enter amount"
+                  keyboardType="numeric"
+                />
+
+                <View style={styles.quickAmountsContainer}>
+                  {[5, 20, 50, 100].map((amount) => (
+                    <TouchableOpacity
+                      key={amount}
+                      onPress={() => handleQuickAmount(amount)}
+                      style={styles.quickAmountButton}
+                    >
+                      <Text style={styles.quickAmountText}>+{amount}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.summaryCard}>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Total Odds:</Text>
+                  <Text style={styles.summaryValue}>{totalOdds.toFixed(2)}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Stake:</Text>
+                  <Text style={styles.summaryValueNormal}>
+                    S/ {parseFloat(stake || "0").toFixed(2)}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => onRemoveBet(bet.id)}>
-                  <Ionicons
-                    name="close-circle"
-                    size={24}
-                    color={colors.destructive.DEFAULT}
-                  />
-                </TouchableOpacity>
+                <View style={styles.summaryRowFinal}>
+                  <Text style={styles.summaryFinalLabel}>Potential Win:</Text>
+                  <Text style={styles.summaryFinalValue}>
+                    S/ {potentialWinnings.toFixed(2)}
+                  </Text>
+                </View>
               </View>
-            ))}
-          </View>
 
-          <View style={styles.stakeContainer}>
-            <View style={styles.stakeSection}>
-              <Text style={styles.sectionLabel}>Stake (Soles)</Text>
-              <Input
-                value={stake}
-                onChangeText={setStake}
-                placeholder="Enter amount"
-                keyboardType="numeric"
-              />
-
-              <View style={styles.quickAmountsContainer}>
-                {[5, 20, 50, 100].map((amount) => (
-                  <TouchableOpacity
-                    key={amount}
-                    onPress={() => handleQuickAmount(amount)}
-                    style={styles.quickAmountButton}
-                  >
-                    <Text style={styles.quickAmountText}>+{amount}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Button
+                variant="secondary"
+                size="lg"
+                onPress={() => {}}
+                disabled={bets.length === 0 || parseFloat(stake) <= 0}
+              >
+                Place Bet
+              </Button>
             </View>
-
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Total Odds:</Text>
-                <Text style={styles.summaryValue}>{totalOdds.toFixed(2)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Stake:</Text>
-                <Text style={styles.summaryValueNormal}>
-                  S/ {parseFloat(stake || "0").toFixed(2)}
-                </Text>
-              </View>
-              <View style={styles.summaryRowFinal}>
-                <Text style={styles.summaryFinalLabel}>Potential Win:</Text>
-                <Text style={styles.summaryFinalValue}>
-                  S/ {potentialWinnings.toFixed(2)}
-                </Text>
-              </View>
-            </View>
-
-            <Button
-              variant="secondary"
-              size="lg"
-              onPress={() => {}}
-              disabled={bets.length === 0 || parseFloat(stake) <= 0}
-            >
-              Place Bet
-            </Button>
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </Card>
       )}
-    </Card>
+    </View>
   );
 }
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    container: {
+      flex: 1,
+      flexDirection: "column",
+      maxHeight: "100%",
+    },
     card: {
+      flex: 1,
       width: "100%",
       backgroundColor: colors.card.DEFAULT,
       borderRadius: borderRadius.lg,
+      maxHeight: "100%",
     },
     header: {
       padding: spacing.lg,
@@ -202,6 +214,7 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.primary.DEFAULT,
       borderTopLeftRadius: borderRadius.lg,
       borderTopRightRadius: borderRadius.lg,
+      marginBottom: spacing.sm,
     },
     headerText: {
       fontSize: fontSize.lg,
@@ -225,10 +238,12 @@ const createStyles = (colors: ThemeColors) =>
       textAlign: "center",
     },
     scrollView: {
-      flexGrow: 1,
+      flex: 1,
+      maxHeight: "100%",
     },
     scrollContent: {
       paddingBottom: spacing.lg,
+      flexGrow: 1,
     },
     betsContainer: {
       padding: spacing.lg,

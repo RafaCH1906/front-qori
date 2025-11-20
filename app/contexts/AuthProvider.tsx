@@ -22,7 +22,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         (async () => {
             const tokens = await getStoredTokens();
             if (tokens?.accessToken) {
-                // optionally decode or call /me; for now set a placeholder user object
                 setUser({});
             }
             setLoading(false);

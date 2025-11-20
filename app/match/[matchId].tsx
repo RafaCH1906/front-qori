@@ -24,7 +24,7 @@ import { useTheme } from "@/context/theme-context";
 function MatchDetailScreen() {
   const { matchId } = useLocalSearchParams<{ matchId?: string }>();
   const router = useRouter();
-  const { addBet } = useBetting();
+  const { addBet, selectedBets } = useBetting();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -33,6 +33,17 @@ function MatchDetailScreen() {
     if (!matchId || Number.isNaN(numericId)) return undefined;
     return MATCHES.find((item) => item.id === numericId);
   }, [matchId]);
+
+  // Check if a specific bet is selected
+  const isBetSelected = (category: BetCategoryKey, value: string) => {
+    if (!match) return false;
+    return selectedBets.some(
+      (bet) =>
+        bet.matchId === match.id &&
+        bet.type === value &&
+        bet.betType === category
+    );
+  };
 
   const handleAddBet = (
     category: BetCategoryKey,
@@ -130,19 +141,40 @@ function MatchDetailScreen() {
           <View key={key} style={styles.section}>
             <Text style={styles.sectionTitle}>{config.label}</Text>
             <View style={styles.sectionGrid}>
-              {config.options.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={styles.optionCard}
-                  activeOpacity={0.8}
-                  onPress={() => handleAddBet(key as BetCategoryKey, option)}
-                >
-                  <Text style={styles.optionLabel}>{option.label}</Text>
-                  <Text style={styles.optionOdds}>
-                    {option.odds.toFixed(2)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {config.options.map((option) => {
+                const isSelected = isBetSelected(
+                  key as BetCategoryKey,
+                  option.value
+                );
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.optionCard,
+                      isSelected && styles.optionCardSelected,
+                    ]}
+                    activeOpacity={0.8}
+                    onPress={() => handleAddBet(key as BetCategoryKey, option)}
+                  >
+                    <Text
+                      style={[
+                        styles.optionLabel,
+                        isSelected && styles.optionLabelSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.optionOdds,
+                        isSelected && styles.optionOddsSelected,
+                      ]}
+                    >
+                      {option.odds.toFixed(2)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         ))}
@@ -251,7 +283,7 @@ const createStyles = (colors: ThemeColors) =>
     },
     optionCard: {
       width: "47%",
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: colors.border,
       borderRadius: borderRadius.lg,
       paddingVertical: spacing.md,
@@ -259,16 +291,26 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
       alignItems: "center",
     },
+    optionCardSelected: {
+      backgroundColor: "#FDB81E",
+      borderColor: "#FDB81E",
+    },
     optionLabel: {
       fontSize: fontSize.sm,
       fontWeight: fontWeight.medium,
       color: colors.foreground,
+    },
+    optionLabelSelected: {
+      color: "#1E293B",
     },
     optionOdds: {
       fontSize: fontSize.lg,
       fontWeight: fontWeight.bold,
       color: colors.accent.DEFAULT,
       marginTop: spacing.xs,
+    },
+    optionOddsSelected: {
+      color: "#1E293B",
     },
     emptyState: {
       flex: 1,

@@ -74,12 +74,12 @@ const createStyles = (colors: ThemeColors) =>
       gap: spacing.md,
     },
     logoIcon: {
-      width: 40,
-      height: 40,
+      width: 48,
+      height: 48,
     },
     logoText: {
-      width: 120,
-      height: 32,
+      width: 200,
+      height: 60,
     },
     actions: {
       flexDirection: "row",
