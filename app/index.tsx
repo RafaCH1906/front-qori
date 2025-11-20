@@ -277,6 +277,8 @@ const createStyles = (colors: ThemeColors) =>
     mobileBetSlipInner: {
       borderRadius: borderRadius.lg,
       overflow: "hidden",
+      flex: 1,
+      maxHeight: MOBILE_BET_SLIP_MAX_HEIGHT - spacing.xs * 2,
     },
     mobileToggleWrapper: {
       width: "100%",

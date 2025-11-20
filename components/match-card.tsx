@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,11 +75,6 @@ export default function MatchCard({
       matchId: match.id,
       betType: category,
     });
-
-    Alert.alert(
-      "Bet added",
-      `${option.label} @ ${option.odds.toFixed(2)} added to My Bets.`
-    );
   };
 
   return (
