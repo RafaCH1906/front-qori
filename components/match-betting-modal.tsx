@@ -96,6 +96,7 @@ export default function MatchBettingModal({
             style={styles.scrollView}
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={true}
+            indicatorStyle={colors.foreground === "#f0f0f5" ? "white" : "black"}
           >
             {Object.entries(BET_OPTIONS).map(([key, config]) => (
               <View key={key} style={styles.section}>
