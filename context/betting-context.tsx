@@ -27,13 +27,35 @@ export function BettingProvider({ children }: { children: React.ReactNode }) {
   const [selectedBets, setSelectedBets] = useState<Bet[]>([]);
 
   const addBet = useCallback((bet: BetInput) => {
-    setSelectedBets((prev) => [
-      ...prev,
-      {
-        id: bet.id ?? Date.now(),
-        ...bet,
-      },
-    ]);
+    setSelectedBets((prev) => {
+      // Check if the exact same bet already exists (same match, category, and type)
+      const existingBet = prev.find(
+        (existingBet) =>
+          existingBet.matchId === bet.matchId &&
+          existingBet.betType === bet.betType &&
+          existingBet.type === bet.type
+      );
+
+      // If the exact same bet exists, remove it (toggle off)
+      if (existingBet) {
+        return prev.filter((b) => b.id !== existingBet.id);
+      }
+
+      // Remove any existing bet from the same match and category (but different type)
+      const filteredBets = prev.filter(
+        (existingBet) =>
+          !(existingBet.matchId === bet.matchId && existingBet.betType === bet.betType)
+      );
+
+      // Add the new bet
+      return [
+        ...filteredBets,
+        {
+          id: bet.id ?? Date.now(),
+          ...bet,
+        },
+      ];
+    });
   }, []);
 
   const removeBet = useCallback((id: number) => {
