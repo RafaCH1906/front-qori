@@ -23,7 +23,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const tokens = await getStoredTokens();
             if (tokens?.access) {
                 try {
-                    // TODO: Validate token or fetch user info
                     setUser({ tokens });
                 } catch (error) {
                     await clearStoredTokens();
@@ -36,14 +35,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const login = async (payload: { username?: string; email?: string; password: string }) => {
         const data = await AuthApi.login(payload);
-        await setStoredTokens(data.access, data.refresh);
-        setUser(data.user || { tokens: data });
+        await setStoredTokens(data.accessToken, data.refreshToken);
+        setUser(data.user);
     };
 
     const register = async (payload: any) => {
-        const data = await AuthApi.register(payload);
-        await setStoredTokens(data.access, data.refresh);
-        setUser(data.user || { tokens: data });
+        await AuthApi.register(payload);
     };
 
     const logout = async () => {

@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { spacing, borderRadius, ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/theme-context";
 
+import { useAuth } from "@/app/contexts/AuthProvider";
+import { useRouter } from "expo-router";
+
 interface HeaderProps {
   onLoginClick: () => void;
   onRegisterClick: () => void;
@@ -12,13 +15,15 @@ interface HeaderProps {
 
 export default function Header({ onLoginClick, onRegisterClick }: HeaderProps) {
   const { colors, toggleTheme, theme } = useTheme();
+  const { user } = useAuth();
+  const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
         {/* Logo */}
-        <View style={styles.logoContainer}>
+        <TouchableOpacity onPress={() => router.push("/")} style={styles.logoContainer}>
           <Image
             source={require("@/assets/logotipo.png")}
             style={styles.logoIcon}
@@ -29,7 +34,7 @@ export default function Header({ onLoginClick, onRegisterClick }: HeaderProps) {
             style={styles.logoText}
             resizeMode="contain"
           />
-        </View>
+        </TouchableOpacity>
 
         {/* Right Side Actions */}
         <View style={styles.actions}>
@@ -41,13 +46,21 @@ export default function Header({ onLoginClick, onRegisterClick }: HeaderProps) {
             />
           </TouchableOpacity>
 
-          <Button variant="outline" size="sm" onPress={onLoginClick}>
-            Login
-          </Button>
+          {user ? (
+            <Button size="sm" onPress={() => router.push("/profile")}>
+              Profile
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onPress={onLoginClick}>
+                Login
+              </Button>
 
-          <Button size="sm" onPress={onRegisterClick}>
-            Register
-          </Button>
+              <Button size="sm" onPress={onRegisterClick}>
+                Register
+              </Button>
+            </>
+          )}
         </View>
       </View>
     </View>

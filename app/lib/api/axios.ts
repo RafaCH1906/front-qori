@@ -1,7 +1,16 @@
 import axios from "axios";
+import { Platform } from "react-native";
 import { getStoredTokens, setStoredTokens, clearStoredTokens } from "../auth/storage";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api";
+// Default to localhost for web/iOS, and 10.0.2.2 for Android emulator
+// For physical devices, EXPO_PUBLIC_API_URL must be set to the local IP
+const DEFAULT_URL = Platform.OS === "android"
+    ? "http://10.0.2.2:8080/api/v1"
+    : "http://localhost:8080/api/v1";
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_URL;
+
+console.log("API_BASE_URL:", API_BASE_URL);
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -32,11 +41,12 @@ api.interceptors.response.use(
             try {
                 const tokens = await getStoredTokens();
                 if (tokens?.refresh) {
+                    // Note: We use axios.post directly to avoid interceptors
                     const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
                         refresh: tokens.refresh,
                     });
-                    await setStoredTokens(data.access, data.refresh);
-                    originalRequest.headers.Authorization = `Bearer ${data.access}`;
+                    await setStoredTokens(data.accessToken, data.refreshToken); // Backend returns accessToken/refreshToken
+                    originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
                     return api(originalRequest);
                 }
             } catch (refreshError) {
