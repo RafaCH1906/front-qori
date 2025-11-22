@@ -1,3 +1,10 @@
+// Re-export League type from lib/types for backward compatibility
+export type { League } from "@/lib/types";
+
+/**
+ * @deprecated Hardcoded leagues - now fetched from API via getUpcomingMatches()
+ * Kept for backward compatibility only
+ */
 export const LEAGUES = [
   { id: "la-liga", name: "La Liga", country: "Spain", emoji: "🇪🇸" },
   { id: "liga-1-max", name: "Liga 1 Max", country: "Peru", emoji: "🇵🇪" },
@@ -20,6 +27,10 @@ export type Match = {
   odds: { home: number; draw: number; away: number };
 };
 
+/**
+ * @deprecated Hardcoded matches - now fetched from API via getUpcomingMatches()
+ * Kept for backward compatibility only
+ */
 export const MATCHES: Match[] = [
   {
     id: 1,
