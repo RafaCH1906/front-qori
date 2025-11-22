@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { spacing, borderRadius, ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/theme-context";
 
-import { useAuth } from "@/app/contexts/AuthProvider";
+import { useAuth } from "@/context/AuthProvider";
 import { useRouter } from "expo-router";
 
 interface HeaderProps {

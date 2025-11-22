@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "@/app/contexts/AuthProvider";
+import { useAuth } from "@/context/AuthProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/context/theme-context";

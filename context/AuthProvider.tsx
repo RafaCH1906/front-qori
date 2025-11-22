@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import * as AuthApi from "../lib/api/auth";
-import { getStoredTokens, setStoredTokens, clearStoredTokens } from "../lib/auth/storage";
+import * as AuthApi from "@/lib/api/auth";
+import { getStoredTokens, setStoredTokens, clearStoredTokens } from "@/lib/auth/storage";
 
 type User = any | null;
 

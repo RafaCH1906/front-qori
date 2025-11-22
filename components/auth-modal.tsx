@@ -22,7 +22,8 @@ import {
   ThemeColors,
 } from "@/constants/theme";
 import { useTheme } from "@/context/theme-context";
-import { useAuth } from "@/app/contexts/AuthProvider";
+import { useAuth } from "@/context/AuthProvider";
+import { useToast } from "@/context/toast-context";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -54,6 +55,7 @@ export default function AuthModal({
 
   const { colors } = useTheme();
   const { login, register } = useAuth();
+  const { showToast } = useToast();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const validateForm = () => {
@@ -111,8 +113,8 @@ export default function AuthModal({
           address: "Default Address",
         };
         await register(payload);
-        Alert.alert("Success", "Account created. Please check your email to activate it.");
-        onSwitchMode("login");
+        showToast("Account created. Please check your email to activate it.", "success");
+        onClose();
       }
     } catch (error: any) {
       console.error(error);
