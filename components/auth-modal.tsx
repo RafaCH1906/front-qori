@@ -30,6 +30,7 @@ interface AuthModalProps {
   onClose: () => void;
   mode: "login" | "register";
   onSwitchMode: (mode: "login" | "register") => void;
+  onForgotPassword?: () => void;
 }
 
 export default function AuthModal({
@@ -37,6 +38,7 @@ export default function AuthModal({
   onClose,
   mode,
   onSwitchMode,
+  onForgotPassword,
 }: AuthModalProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -260,7 +262,7 @@ export default function AuthModal({
                   {mode === "login" && (
                     <View style={styles.rememberRow}>
                       <Text style={styles.rememberText}>Remember me</Text>
-                      <TouchableOpacity>
+                      <TouchableOpacity onPress={onForgotPassword}>
                         <Text style={styles.forgotText}>Forgot password?</Text>
                       </TouchableOpacity>
                     </View>

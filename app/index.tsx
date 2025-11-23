@@ -15,6 +15,8 @@ import Header from "@/components/header";
 import BettingContent from "@/components/betting-content";
 import BetSlip from "@/components/bet-slip";
 import AuthModal from "@/components/auth-modal";
+import ForgotPasswordModal from "@/components/forgot-password-modal";
+import LeaguesBar from "@/components/leagues-bar";
 import {
   spacing,
   borderRadius,
@@ -35,7 +37,9 @@ const MOBILE_BET_SLIP_COLLAPSED_SPACE = 140;
 function IndexScreen() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [isBetSlipExpanded, setIsBetSlipExpanded] = useState(false);
+  const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
   const { width } = useWindowDimensions();
   const router = useRouter();
   const { selectedBets, addBet, removeBet } = useBetting();
@@ -52,6 +56,7 @@ function IndexScreen() {
     const maxLift = MOBILE_BET_SLIP_MAX_HEIGHT - spacing.xl;
     return Math.min(maxLift, Math.max(desiredLift, minLift));
   }, [selectedBets.length, collapsedPortalBottom]);
+
   const handleAuthOpen = (mode: "login" | "register") => {
     setAuthMode(mode);
     setIsAuthOpen(true);
@@ -121,6 +126,7 @@ function IndexScreen() {
     : isBetSlipExpanded
       ? MOBILE_BET_SLIP_MAX_HEIGHT + expandedPortalBottom
       : MOBILE_BET_SLIP_COLLAPSED_SPACE + spacing.lg;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
@@ -140,9 +146,14 @@ function IndexScreen() {
       >
         {/* Main Content (LEFT SIDE) */}
         <View style={styles.contentWrapper}>
+          <LeaguesBar
+            selectedLeagueId={selectedLeague}
+            onLeagueSelect={(league) => setSelectedLeague(league ? league.id : null)}
+          />
           <BettingContent
             onAddBet={handleAddBet}
             onOpenMatch={handleOpenMatch}
+            selectedLeague={selectedLeague}
           />
         </View>
 
@@ -216,6 +227,16 @@ function IndexScreen() {
         onClose={() => setIsAuthOpen(false)}
         mode={authMode}
         onSwitchMode={(mode) => setAuthMode(mode)}
+        onForgotPassword={() => {
+          setIsAuthOpen(false);
+          setIsForgotPasswordOpen(true);
+        }}
+      />
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
       />
     </SafeAreaView>
   );

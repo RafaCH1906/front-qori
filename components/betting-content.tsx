@@ -1,22 +1,28 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import MatchCard from "@/components/match-card";
-import LeagueFilter from "@/components/league-filter";
 import { spacing, fontSize, fontWeight, ThemeColors } from "@/constants/theme";
 import { Match } from "@/constants/matches";
 import { useTheme } from "@/context/theme-context";
 import { getUpcomingMatches, getLeagues, getOdds, getOptions } from "@/lib/api/matches";
-import { MatchDTO, League } from "@/lib/types";
+import { MatchDTO } from "@/lib/types";
+
+// Define local League interface to match what we use in this component
+interface LocalLeague {
+  id: number;
+  name: string;
+  country?: string;
+}
 
 interface BettingContentProps {
   onAddBet: (bet: any) => void;
   onOpenMatch: (match: Match) => void;
+  selectedLeague: number | null;
 }
 
-export default function BettingContent({ onAddBet, onOpenMatch }: BettingContentProps) {
-  const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
+export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }: BettingContentProps) {
   const [matches, setMatches] = useState<MatchDTO[]>([]);
-  const [leagues, setLeagues] = useState<League[]>([]);
+  const [leagues, setLeagues] = useState<LocalLeague[]>([]);
   const [odds, setOdds] = useState<any[]>([]);
   const [options, setOptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,14 +47,7 @@ export default function BettingContent({ onAddBet, onOpenMatch }: BettingContent
 
         if (isMounted.current) {
           setMatches(matchesData);
-          setLeagues(
-            leaguesData.map((l) => ({
-              id: l.id.toString(),
-              name: l.name,
-              country: l.country || "International",
-              emoji: getCountryEmoji(l.country),
-            }))
-          );
+          setLeagues(leaguesData);
           setOdds(oddsData);
           setOptions(optionsData);
         }
@@ -71,16 +70,10 @@ export default function BettingContent({ onAddBet, onOpenMatch }: BettingContent
     };
   }, []);
 
-  // Log fetched data for debugging
-  useEffect(() => {
-    if (odds.length > 0) console.log("Fetched Odds:", odds);
-    if (options.length > 0) console.log("Fetched Options:", options);
-  }, [odds, options]);
-
   // Filter matches by selected league
   const filteredMatches = useMemo(() => {
     if (!selectedLeague) return matches;
-    return matches.filter((m) => m.league && m.league.id.toString() === selectedLeague);
+    return matches.filter((m) => m.league && m.league.id === selectedLeague);
   }, [matches, selectedLeague]);
 
   // Convert MatchDTO to Match format for MatchCard
@@ -128,11 +121,6 @@ export default function BettingContent({ onAddBet, onOpenMatch }: BettingContent
 
   return (
     <View style={styles.container}>
-      <View style={styles.leagueSection}>
-        <Text style={styles.sectionTitle}>Select a League</Text>
-        <LeagueFilter leagues={leagues} selectedLeague={selectedLeague} onSelect={setSelectedLeague} />
-      </View>
-
       <View style={styles.matchesSection}>
         <View style={styles.matchesHeader}>
           <Text style={styles.sectionTitle}>
@@ -162,21 +150,6 @@ function formatMatchTime(isoDate: string): string {
   }
 }
 
-// Helper function to get country emoji
-function getCountryEmoji(country?: string): string {
-  const emojiMap: Record<string, string> = {
-    Spain: "🇪🇸",
-    Peru: "🇵🇪",
-    Germany: "🇩🇪",
-    Italy: "🇮🇹",
-    England: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    France: "🇫🇷",
-    Europe: "🏆",
-    "International": "🏆"
-  };
-  return emojiMap[country || ""] || "⚽";
-}
-
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1 },
@@ -188,7 +161,6 @@ const createStyles = (colors: ThemeColors) =>
     emptyIcon: { fontSize: 48, marginBottom: spacing.md },
     emptyText: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.foreground, textAlign: "center", marginBottom: spacing.sm },
     emptyHint: { fontSize: fontSize.sm, color: colors.muted.foreground, textAlign: "center" },
-    leagueSection: { marginBottom: spacing.lg },
     sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, marginBottom: spacing.md, color: colors.foreground },
     matchesSection: { marginBottom: spacing.lg },
     matchesHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
