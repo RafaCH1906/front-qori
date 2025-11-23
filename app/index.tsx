@@ -26,6 +26,8 @@ import { Match } from "@/constants/matches";
 import { useBetting } from "@/context/betting-context";
 import { useTheme } from "@/context/theme-context";
 
+import { useAuth } from "@/context/AuthProvider";
+
 const DESKTOP_BREAKPOINT = 900;
 const MOBILE_BET_SLIP_MAX_HEIGHT = 420;
 const MOBILE_BET_SLIP_COLLAPSED_SPACE = 140;
@@ -38,6 +40,7 @@ function IndexScreen() {
   const router = useRouter();
   const { selectedBets, addBet, removeBet } = useBetting();
   const { colors } = useTheme();
+  const { user } = useAuth();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const betSlipAnim = useRef(new Animated.Value(0)).current;
   const isLargeScreen = width >= DESKTOP_BREAKPOINT;
@@ -55,6 +58,10 @@ function IndexScreen() {
   };
 
   const handleAddBet = (bet: any) => {
+    if (!user) {
+      handleAuthOpen("login");
+      return;
+    }
     addBet(bet);
   };
 
@@ -112,8 +119,8 @@ function IndexScreen() {
   const mobileContentPadding = isLargeScreen
     ? spacing.xl
     : isBetSlipExpanded
-    ? MOBILE_BET_SLIP_MAX_HEIGHT + expandedPortalBottom
-    : MOBILE_BET_SLIP_COLLAPSED_SPACE + spacing.lg;
+      ? MOBILE_BET_SLIP_MAX_HEIGHT + expandedPortalBottom
+      : MOBILE_BET_SLIP_COLLAPSED_SPACE + spacing.lg;
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header

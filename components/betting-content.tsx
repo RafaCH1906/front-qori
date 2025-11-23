@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import MatchCard from "@/components/match-card";
 import LeagueFilter from "@/components/league-filter";
 import { spacing, fontSize, fontWeight, ThemeColors } from "@/constants/theme";
 import { Match } from "@/constants/matches";
 import { useTheme } from "@/context/theme-context";
-import { getUpcomingMatches } from "@/lib/api/matches";
+import { getUpcomingMatches, getLeagues, getOdds, getOptions } from "@/lib/api/matches";
 import { MatchDTO, League } from "@/lib/types";
 
 interface BettingContentProps {
@@ -13,71 +13,85 @@ interface BettingContentProps {
   onOpenMatch: (match: Match) => void;
 }
 
-export default function BettingContent({
-  onAddBet,
-  onOpenMatch,
-}: BettingContentProps) {
+export default function BettingContent({ onAddBet, onOpenMatch }: BettingContentProps) {
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
   const [matches, setMatches] = useState<MatchDTO[]>([]);
+  const [leagues, setLeagues] = useState<League[]>([]);
+  const [odds, setOdds] = useState<any[]>([]);
+  const [options, setOptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  // Fetch matches on component mount
+  // Guard against state updates after component unmount
+  const isMounted = useRef(true);
   useEffect(() => {
-    const fetchMatches = async () => {
+    isMounted.current = true;
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await getUpcomingMatches();
-        setMatches(data);
+        const [matchesData, leaguesData, oddsData, optionsData] = await Promise.all([
+          getUpcomingMatches(),
+          getLeagues(),
+          getOdds(),
+          getOptions(),
+        ]);
+
+        if (isMounted.current) {
+          setMatches(matchesData);
+          setLeagues(
+            leaguesData.map((l) => ({
+              id: l.id.toString(),
+              name: l.name,
+              country: l.country || "International",
+              emoji: getCountryEmoji(l.country),
+            }))
+          );
+          setOdds(oddsData);
+          setOptions(optionsData);
+        }
       } catch (err: any) {
-        console.error("Failed to fetch matches:", err);
-        setError(
-          err.response?.status === 404
-            ? "No matches found"
-            : "Unable to load matches. Please check your connection."
-        );
+        console.error("Failed to fetch data:", err);
+        if (isMounted.current) {
+          setError(
+            err.response?.status === 404
+              ? "No matches found"
+              : "Unable to load data. Please check your connection."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
-
-    fetchMatches();
+    fetchData();
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
-  // Derive unique leagues from matches
-  const leagues: League[] = useMemo(() => {
-    const uniqueLeagues = new Map<number, League>();
-    matches.forEach((match) => {
-      if (match.league && !uniqueLeagues.has(match.league.id)) {
-        uniqueLeagues.set(match.league.id, {
-          id: match.league.id.toString(),
-          name: match.league.name,
-          country: match.league.country || "International",
-          emoji: getCountryEmoji(match.league.country),
-        });
-      }
-    });
-    return Array.from(uniqueLeagues.values());
-  }, [matches]);
+  // Log fetched data for debugging
+  useEffect(() => {
+    if (odds.length > 0) console.log("Fetched Odds:", odds);
+    if (options.length > 0) console.log("Fetched Options:", options);
+  }, [odds, options]);
 
   // Filter matches by selected league
   const filteredMatches = useMemo(() => {
     if (!selectedLeague) return matches;
-    return matches.filter((m) => m.league.id.toString() === selectedLeague);
+    return matches.filter((m) => m.league && m.league.id.toString() === selectedLeague);
   }, [matches, selectedLeague]);
 
   // Convert MatchDTO to Match format for MatchCard
   const convertedMatches: Match[] = useMemo(() => {
-    return filteredMatches.map((match) => ({
-      id: match.id,
-      league: match.league.id.toString(),
-      homeTeam: match.homeTeam.name,
-      awayTeam: match.awayTeam.name,
-      time: formatMatchTime(match.date),
-      odds: { home: 1.85, draw: 3.6, away: 4.2 }, // TODO: Get from markets API
+    return filteredMatches.map((m) => ({
+      id: m.id,
+      league: m.league ? m.league.id.toString() : "",
+      homeTeam: m.homeTeam?.name ?? "",
+      awayTeam: m.awayTeam?.name ?? "",
+      time: formatMatchTime(m.date),
+      odds: { home: 1.85, draw: 3.6, away: 4.2 }, // placeholder odds
     }));
   }, [filteredMatches]);
 
@@ -96,9 +110,7 @@ export default function BettingContent({
         <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorText}>{error}</Text>
         <Text style={styles.errorHint}>
-          {error.includes("connection")
-            ? "Make sure the backend server is running"
-            : "Try refreshing the page"}
+          {error.includes("connection") ? "Make sure the backend server is running" : "Try refreshing the page"}
         </Text>
       </View>
     );
@@ -118,33 +130,20 @@ export default function BettingContent({
     <View style={styles.container}>
       <View style={styles.leagueSection}>
         <Text style={styles.sectionTitle}>Select a League</Text>
-        <LeagueFilter
-          leagues={leagues}
-          selectedLeague={selectedLeague}
-          onSelect={setSelectedLeague}
-        />
+        <LeagueFilter leagues={leagues} selectedLeague={selectedLeague} onSelect={setSelectedLeague} />
       </View>
 
       <View style={styles.matchesSection}>
         <View style={styles.matchesHeader}>
           <Text style={styles.sectionTitle}>
-            {selectedLeague
-              ? leagues.find((l) => l.id === selectedLeague)?.name
-              : "All Matches"}
+            {selectedLeague ? leagues.find((l) => l.id === selectedLeague)?.name : "All Matches"}
           </Text>
-          <Text style={styles.matchCount}>
-            {convertedMatches.length} matches
-          </Text>
+          <Text style={styles.matchCount}>{convertedMatches.length} matches</Text>
         </View>
-
         <View style={styles.matchesList}>
           {convertedMatches.map((match) => (
             <View key={match.id} style={styles.matchItem}>
-              <MatchCard
-                match={match}
-                onAddBet={onAddBet}
-                onOpenMatch={() => onOpenMatch(match)}
-              />
+              <MatchCard match={match} onAddBet={onAddBet} onOpenMatch={() => onOpenMatch(match)} />
             </View>
           ))}
         </View>
@@ -157,11 +156,7 @@ export default function BettingContent({
 function formatMatchTime(isoDate: string): string {
   try {
     const date = new Date(isoDate);
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+    return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
   } catch {
     return "TBD";
   }
@@ -177,85 +172,27 @@ function getCountryEmoji(country?: string): string {
     England: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
     France: "🇫🇷",
     Europe: "🏆",
+    "International": "🏆"
   };
   return emojiMap[country || ""] || "⚽";
 }
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    centerContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      padding: spacing.xl,
-      minHeight: 400,
-    },
-    loadingText: {
-      marginTop: spacing.sm,
-      fontSize: fontSize.base,
-      color: colors.muted.foreground,
-    },
-    errorIcon: {
-      fontSize: 48,
-      marginBottom: spacing.md,
-    },
-    errorText: {
-      fontSize: fontSize.lg,
-      fontWeight: fontWeight.semibold,
-      color: colors.destructive.DEFAULT,
-      textAlign: "center",
-      marginBottom: spacing.sm,
-    },
-    errorHint: {
-      fontSize: fontSize.sm,
-      color: colors.muted.foreground,
-      textAlign: "center",
-    },
-    emptyIcon: {
-      fontSize: 48,
-      marginBottom: spacing.md,
-    },
-    emptyText: {
-      fontSize: fontSize.lg,
-      fontWeight: fontWeight.semibold,
-      color: colors.foreground,
-      textAlign: "center",
-      marginBottom: spacing.sm,
-    },
-    emptyHint: {
-      fontSize: fontSize.sm,
-      color: colors.muted.foreground,
-      textAlign: "center",
-    },
-    leagueSection: {
-      marginBottom: spacing.lg,
-    },
-    sectionTitle: {
-      fontSize: fontSize.lg,
-      fontWeight: fontWeight.semibold,
-      marginBottom: spacing.md,
-      color: colors.foreground,
-    },
-    matchesSection: {
-      marginBottom: spacing.lg,
-    },
-    matchesHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: spacing.md,
-    },
-    matchCount: {
-      fontSize: fontSize.sm,
-      color: colors.muted.foreground,
-    },
-    matchesList: {
-      gap: spacing.md,
-    },
-    matchItem: {
-      marginBottom: spacing.md,
-    },
+    container: { flex: 1 },
+    centerContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xl, minHeight: 400 },
+    loadingText: { marginTop: spacing.sm, fontSize: fontSize.base, color: colors.muted.foreground },
+    errorIcon: { fontSize: 48, marginBottom: spacing.md },
+    errorText: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.destructive.DEFAULT, textAlign: "center", marginBottom: spacing.sm },
+    errorHint: { fontSize: fontSize.sm, color: colors.muted.foreground, textAlign: "center" },
+    emptyIcon: { fontSize: 48, marginBottom: spacing.md },
+    emptyText: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.foreground, textAlign: "center", marginBottom: spacing.sm },
+    emptyHint: { fontSize: fontSize.sm, color: colors.muted.foreground, textAlign: "center" },
+    leagueSection: { marginBottom: spacing.lg },
+    sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, marginBottom: spacing.md, color: colors.foreground },
+    matchesSection: { marginBottom: spacing.lg },
+    matchesHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
+    matchCount: { fontSize: fontSize.sm, color: colors.muted.foreground },
+    matchesList: { gap: spacing.md },
+    matchItem: { marginBottom: spacing.md },
   });

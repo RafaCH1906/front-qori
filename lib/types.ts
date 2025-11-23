@@ -13,7 +13,29 @@ export interface LeagueDTO {
     country?: string;
     logo?: string;
 }
-result ?: 'WON' | 'LOST' | 'VOID';
+
+export interface MatchDTO {
+    id: number;
+    homeTeam: TeamDTO;
+    awayTeam: TeamDTO;
+    league: LeagueDTO;
+    date: string; // Backend uses 'date' not 'matchDate'
+    state: string; // Backend uses 'state' not 'status'
+    homegoals?: number;
+    awaygoals?: number;
+    homecards?: number;
+    awaycards?: number;
+    homeshots?: number;
+    awayshots?: number;
+    homecorners?: number;
+    awaycorners?: number;
+}
+
+export interface OptionDTO {
+    id: number;
+    name: string;
+    odd: number;
+    result?: 'WON' | 'LOST' | 'VOID';
 }
 
 export interface MarketDTO {

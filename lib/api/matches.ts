@@ -32,3 +32,19 @@ export const getMatchesByLeague = async (leagueId: number): Promise<MatchDTO[]> 
     const { data } = await api.get(`/leagues/${leagueId}/matches`);
     return data;
 };
+
+/**
+ * Get all odds (public endpoint)
+ */
+export const getOdds = async (): Promise<any[]> => {
+    const { data } = await api.get("/odds");
+    return data;
+};
+
+/**
+ * Get all options (public endpoint)
+ */
+export const getOptions = async (): Promise<any[]> => {
+    const { data } = await api.get("/options");
+    return data;
+};
