@@ -13,32 +13,7 @@ export interface LeagueDTO {
     country?: string;
     logo?: string;
 }
-
-export interface MatchDTO {
-    id: number;
-    homeTeam: TeamDTO;
-    awayTeam: TeamDTO;
-    league: LeagueDTO;
-    matchDate: string; // ISO 8601 date string
-    status: 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED';
-    homeScore?: number;
-    awayScore?: number;
-    // Stats fields (optional, may be null)
-    homeShots?: number;
-    awayShots?: number;
-    homeCorners?: number;
-    awayCorners?: number;
-    homeYellowCards?: number;
-    awayYellowCards?: number;
-    homeRedCards?: number;
-    awayRedCards?: number;
-}
-
-export interface OptionDTO {
-    id: number;
-    name: string;
-    odd: number;
-    result?: 'WON' | 'LOST' | 'VOID';
+result ?: 'WON' | 'LOST' | 'VOID';
 }
 
 export interface MarketDTO {

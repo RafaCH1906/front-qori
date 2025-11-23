@@ -76,7 +76,7 @@ export default function BettingContent({
       league: match.league.id.toString(),
       homeTeam: match.homeTeam.name,
       awayTeam: match.awayTeam.name,
-      time: formatMatchTime(match.matchDate),
+      time: formatMatchTime(match.date),
       odds: { home: 1.85, draw: 3.6, away: 4.2 }, // TODO: Get from markets API
     }));
   }, [filteredMatches]);
