@@ -6,7 +6,7 @@ type AuthContextType = {
     user: UserData | null;
     loading: boolean;
     login: (payload: { username?: string; email?: string; password: string }) => Promise<void>;
-    register: (payload: any) => Promise<void>;
+    register: (payload: any) => Promise<UserData>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
 };
@@ -89,9 +89,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const register = async (payload: any) => {
+    const register = async (payload: any): Promise<UserData> => {
         try {
-            await AuthApi.register(payload);
+            const data = await AuthApi.register(payload);
+            // After registration, automatically log the user in
+            if (data.accessToken && data.user) {
+                await AuthStorage.saveToken(data.accessToken);
+                await AuthStorage.saveUserData(data.user);
+                setUser(data.user);
+                return data.user;
+            }
+            throw new Error('Registration succeeded but no user data returned');
         } catch (error) {
             console.error('Registration error:', error);
             throw error;

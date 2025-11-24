@@ -24,6 +24,7 @@ import {
 import { useTheme } from "@/context/theme-context";
 import { useAuth } from "@/context/AuthProvider";
 import { useToast } from "@/context/toast-context";
+import { useRouter } from "expo-router";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -58,6 +59,7 @@ export default function AuthModal({
   const { colors } = useTheme();
   const { login, register } = useAuth();
   const { showToast } = useToast();
+  const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const validateForm = () => {
@@ -118,9 +120,15 @@ export default function AuthModal({
           address: "Default Address",
         };
         console.log('[AUTH MODAL] Attempting registration');
-        await register(payload);
-        showToast("Account created. Please check your email to activate it.", "success");
+        const userData = await register(payload);
+        showToast("Account created successfully!", "success");
         onClose();
+
+        // Navigate to welcome gift if user hasn't received it yet (mobile only)
+        if (Platform.OS !== 'web' && !userData.hasReceivedWelcomeGift) {
+          console.log('[AUTH MODAL] Navigating to welcome gift screen');
+          router.push('/welcome-gift');
+        }
       }
     } catch (error: any) {
       console.error('[AUTH MODAL] Error:', error);

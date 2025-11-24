@@ -27,4 +27,9 @@ export const promotionsApi = {
         const response = await api.post('/promotions/gift/open');
         return response.data;
     },
+
+    openWelcomeGift: async (): Promise<GiftReward> => {
+        const response = await api.post('/promotions/welcome-gift/open');
+        return response.data;
+    },
 };
