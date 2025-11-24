@@ -99,7 +99,10 @@ export default function AuthModal({
     setIsLoading(true);
     try {
       if (mode === "login") {
-        await login({ email, password });
+        console.log('[AUTH MODAL] Attempting login with:', email);
+        await login({ email: email, password });
+        console.log('[AUTH MODAL] Login successful');
+        showToast("Login successful!", "success");
         onClose();
       } else {
         // Construct payload matching backend RegisterRequest
@@ -114,13 +117,36 @@ export default function AuthModal({
           birthDate,
           address: "Default Address",
         };
+        console.log('[AUTH MODAL] Attempting registration');
         await register(payload);
         showToast("Account created. Please check your email to activate it.", "success");
         onClose();
       }
     } catch (error: any) {
-      console.error(error);
-      const message = error.response?.data?.message || "An error occurred. Please check your connection.";
+      console.error('[AUTH MODAL] Error:', error);
+
+      // Extract error message from various possible locations
+      let message = "An error occurred. Please try again.";
+
+      if (error.response?.data) {
+        // Backend returned structured error
+        if (typeof error.response.data === 'string') {
+          message = error.response.data;
+        } else if (error.response.data.message) {
+          message = error.response.data.message;
+        } else if (error.response.data.error) {
+          message = error.response.data.error;
+        }
+      } else if (error.message) {
+        // Network or other error
+        if (error.message.includes('Network')) {
+          message = "Network error. Please check your connection and ensure the backend is running.";
+        } else {
+          message = error.message;
+        }
+      }
+
+      console.error('[AUTH MODAL] Error message:', message);
       setGeneralError(message);
     } finally {
       setIsLoading(false);

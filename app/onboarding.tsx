@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -7,6 +7,8 @@ import {
     TouchableOpacity,
     FlatList,
     ViewToken,
+    ActivityIndicator,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,51 +16,76 @@ import { StatusBar } from 'expo-status-bar';
 import { OnboardingStorage } from '@/lib/onboarding-storage';
 import { spacing, borderRadius, fontSize, fontWeight } from '@/constants/theme';
 import { useTheme } from '@/context/theme-context';
+import { promotionsApi, SlideshowSlide } from '@/lib/api/promotions';
 
 const { width } = Dimensions.get('window');
-
-interface OnboardingSlide {
-    id: string;
-    emoji: string;
-    title: string;
-    description: string;
-}
-
-const slides: OnboardingSlide[] = [
-    {
-        id: '1',
-        emoji: '⚽',
-        title: 'Bienvenido a Qoribet',
-        description: 'La mejor plataforma de apuestas deportivas. Vive la emoción del deporte.',
-    },
-    {
-        id: '2',
-        emoji: '🎯',
-        title: 'Apuestas en Vivo',
-        description: 'Realiza apuestas en tiempo real mientras sigues tus partidos favoritos.',
-    },
-    {
-        id: '3',
-        emoji: '🎁',
-        title: 'Bonos y Recompensas',
-        description: 'Agita tu teléfono para descubrir sorpresas y obtener bonos exclusivos.',
-    },
-    {
-        id: '4',
-        emoji: '🏆',
-        title: '¡Comienza Ahora!',
-        description: 'Regístrate y recibe tu bono de bienvenida para empezar a ganar.',
-    },
-];
 
 export default function OnboardingScreen() {
     const router = useRouter();
     const { colors } = useTheme();
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [slides, setSlides] = useState<SlideshowSlide[]>([]);
+    const [loading, setLoading] = useState(true);
     const flatListRef = useRef<FlatList>(null);
 
+    // Redirect web users immediately - onboarding is mobile-only
+    useEffect(() => {
+        if (Platform.OS === 'web') {
+            router.replace('/');
+            return;
+        }
+        loadSlides();
+    }, []);
+
+    const loadSlides = async () => {
+        try {
+            setLoading(true);
+            const slidesData = await promotionsApi.getSlideshow();
+            setSlides(slidesData);
+        } catch (err) {
+            console.error('Error loading slides:', err);
+            // Fallback to default slides
+            setSlides([
+                {
+                    id: 1,
+                    emoji: '⚽',
+                    title: 'Bienvenido a Qoribet',
+                    description: 'La mejor plataforma de apuestas deportivas. Vive la emoción del deporte.',
+                    imageUrl: '',
+                    displayOrder: 1,
+                },
+                {
+                    id: 2,
+                    emoji: '🎯',
+                    title: 'Apuestas en Vivo',
+                    description: 'Realiza apuestas en tiempo real mientras sigues tus partidos favoritos.',
+                    imageUrl: '',
+                    displayOrder: 2,
+                },
+                {
+                    id: 3,
+                    emoji: '🎁',
+                    title: 'Bonos y Recompensas',
+                    description: 'Agita tu teléfono para descubrir sorpresas y obtener bonos exclusivos.',
+                    imageUrl: '',
+                    displayOrder: 3,
+                },
+                {
+                    id: 4,
+                    emoji: '🏆',
+                    title: '¡Comienza Ahora!',
+                    description: 'Regístrate y recibe tu bono de bienvenida para empezar a ganar.',
+                    imageUrl: '',
+                    displayOrder: 4,
+                },
+            ]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const onViewableItemsChanged = useRef(
-        ({ viewableItems }: { viewableItems: ViewToken<OnboardingSlide>[] }) => {
+        ({ viewableItems }: { viewableItems: ViewToken<SlideshowSlide>[] }) => {
             if (viewableItems.length > 0 && viewableItems[0].index !== null) {
                 setCurrentIndex(viewableItems[0].index);
             }
@@ -98,7 +125,7 @@ export default function OnboardingScreen() {
         }
     };
 
-    const renderSlide = ({ item }: { item: OnboardingSlide }) => (
+    const renderSlide = ({ item }: { item: SlideshowSlide }) => (
         <View style={styles.slide}>
             <Text style={styles.emoji}>{item.emoji}</Text>
             <Text style={[styles.title, { color: colors.foreground }]}>{item.title}</Text>
@@ -107,6 +134,24 @@ export default function OnboardingScreen() {
             </Text>
         </View>
     );
+
+    // Don't render anything on web
+    if (Platform.OS === 'web') {
+        return null;
+    }
+
+    if (loading) {
+        return (
+            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+                    <Text style={[styles.loadingText, { color: colors.muted.foreground }]}>
+                        Cargando...
+                    </Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -127,7 +172,7 @@ export default function OnboardingScreen() {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => item.id.toString()}
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}
                 bounces={false}
@@ -179,6 +224,15 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: spacing.md,
+    },
+    loadingText: {
+        fontSize: fontSize.base,
     },
     skipButton: {
         position: 'absolute',

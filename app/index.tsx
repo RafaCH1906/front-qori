@@ -7,6 +7,7 @@ import {
   Text,
   useWindowDimensions,
   Animated,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -52,9 +53,12 @@ function IndexScreen() {
   const betSlipAnim = useRef(new Animated.Value(0)).current;
   const isLargeScreen = width >= DESKTOP_BREAKPOINT;
 
-  // Check onboarding status on mount
+  // Check onboarding status on mount (mobile only)
   useEffect(() => {
     const checkOnboarding = async () => {
+      // Only show onboarding on mobile
+      if (Platform.OS === 'web') return;
+
       const hasCompleted = await OnboardingStorage.hasCompletedOnboarding();
       if (!hasCompleted) {
         router.replace('/onboarding');
@@ -259,8 +263,9 @@ function IndexScreen() {
         onClose={() => setIsShakeModalOpen(false)}
       />
 
-      {/* Floating Gift Button */}
-      {!isLargeScreen && (
+
+      {/* Floating Gift Button - Mobile Only */}
+      {Platform.OS !== 'web' && !isLargeScreen && (
         <TouchableOpacity
           style={[styles.floatingGiftButton, { backgroundColor: colors.primary.DEFAULT }]}
           onPress={() => setIsShakeModalOpen(true)}

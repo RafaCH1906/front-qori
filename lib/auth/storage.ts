@@ -1,37 +1,112 @@
-import * as SecureStore from "expo-secure-store";
-import { Platform } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-const ACCESS_TOKEN_KEY = "access_token";
-const REFRESH_TOKEN_KEY = "refresh_token";
+// NOTE: SecureStore is disabled due to device-specific crashes.
+// Using AsyncStorage for all platforms as a fallback.
+// import * as SecureStore from 'expo-secure-store';
 
-export const setStoredTokens = async (accessToken: string, refreshToken: string) => {
-    if (Platform.OS === 'web') {
-        localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-        localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-    } else {
-        await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
-        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+const AUTH_TOKEN_KEY = 'authtoken';
+const USER_DATA_KEY = 'userdata';
+
+export interface UserData {
+    id: number;
+    username: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    role?: string;
+}
+
+export class AuthStorage {
+    // Use AsyncStorage for ALL platforms to avoid SecureStore crashes
+    private static async setSecureItem(key: string, value: string): Promise<void> {
+        console.log(`[AuthStorage] Setting item (AsyncStorage). Key: '[${key}]'`);
+        await AsyncStorage.setItem(key, value);
     }
-};
 
-export const getStoredTokens = async () => {
-    if (Platform.OS === 'web') {
-        const access = localStorage.getItem(ACCESS_TOKEN_KEY);
-        const refresh = localStorage.getItem(REFRESH_TOKEN_KEY);
-        return access && refresh ? { access, refresh } : null;
-    } else {
-        const access = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-        const refresh = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-        return access && refresh ? { access, refresh } : null;
+    private static async getSecureItem(key: string): Promise<string | null> {
+        console.log(`[AuthStorage] Getting item (AsyncStorage). Key: '[${key}]'`);
+        return await AsyncStorage.getItem(key);
     }
-};
 
-export const clearStoredTokens = async () => {
-    if (Platform.OS === 'web') {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-    } else {
-        await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
-        await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+    private static async deleteSecureItem(key: string): Promise<void> {
+        console.log(`[AuthStorage] Removing item (AsyncStorage). Key: '[${key}]'`);
+        await AsyncStorage.removeItem(key);
     }
-};
+
+    // Token management
+    static async saveToken(token: string): Promise<void> {
+        try {
+            await this.setSecureItem(AUTH_TOKEN_KEY, token);
+        } catch (error) {
+            console.error('Error saving token:', error);
+            throw error;
+        }
+    }
+
+    static async getToken(): Promise<string | null> {
+        try {
+            return await this.getSecureItem(AUTH_TOKEN_KEY);
+        } catch (error) {
+            console.error('Error getting token:', error);
+            return null;
+        }
+    }
+
+    static async removeToken(): Promise<void> {
+        try {
+            await this.deleteSecureItem(AUTH_TOKEN_KEY);
+        } catch (error) {
+            console.error('Error removing token:', error);
+            throw error;
+        }
+    }
+
+    // User data management
+    static async saveUserData(userData: UserData): Promise<void> {
+        try {
+            const jsonValue = JSON.stringify(userData);
+            await AsyncStorage.setItem(USER_DATA_KEY, jsonValue);
+        } catch (error) {
+            console.error('Error saving user data:', error);
+            throw error;
+        }
+    }
+
+    static async getUserData(): Promise<UserData | null> {
+        try {
+            const jsonValue = await AsyncStorage.getItem(USER_DATA_KEY);
+            return jsonValue != null ? JSON.parse(jsonValue) : null;
+        } catch (error) {
+            console.error('Error getting user data:', error);
+            return null;
+        }
+    }
+
+    static async removeUserData(): Promise<void> {
+        try {
+            await AsyncStorage.removeItem(USER_DATA_KEY);
+        } catch (error) {
+            console.error('Error removing user data:', error);
+            throw error;
+        }
+    }
+
+    // Check if user is authenticated
+    static async isAuthenticated(): Promise<boolean> {
+        const token = await this.getToken();
+        return token !== null;
+    }
+
+    // Clear all auth data
+    static async clearAll(): Promise<void> {
+        try {
+            await this.removeToken();
+            await this.removeUserData();
+        } catch (error) {
+            console.error('Error clearing auth data:', error);
+            throw error;
+        }
+    }
+}

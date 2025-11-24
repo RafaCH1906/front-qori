@@ -7,11 +7,16 @@ import {
     StyleSheet,
     Animated,
     Vibration,
+    ActivityIndicator,
+    Platform,
 } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/theme-context';
 import { spacing, borderRadius, fontSize, fontWeight } from '@/constants/theme';
+import { promotionsApi, GiftReward } from '@/lib/api/promotions';
+import { useAuth } from '@/context/AuthProvider';
+import { AuthStorage } from '@/lib/auth/storage';
 
 interface ShakeModalProps {
     visible: boolean;
@@ -20,11 +25,58 @@ interface ShakeModalProps {
 
 export function ShakeModal({ visible, onClose }: ShakeModalProps) {
     const { colors } = useTheme();
+    const { user } = useAuth();
     const [shakeDetected, setShakeDetected] = useState(false);
     const [prizeRevealed, setPrizeRevealed] = useState(false);
+    const [reward, setReward] = useState<GiftReward | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const shakeAnim = useRef(new Animated.Value(0)).current;
     const prizeAnim = useRef(new Animated.Value(0)).current;
+
+    const handleShake = async () => {
+        if (!user) {
+            setError('Debes iniciar sesión para abrir regalos');
+            setPrizeRevealed(true);
+            return;
+        }
+        const token = await AuthStorage.getToken();
+        console.log('[SHAKE MODAL] Pre‑flight token check:', token ? 'Token exists' : 'TOKEN MISSING');
+        if (!token) {
+            console.error('[SHAKE MODAL] User is logged in but token is missing from storage!');
+            setError('Error de sesión. Por favor, cierra sesión y vuelve a entrar.');
+            setPrizeRevealed(true);
+            return;
+        }
+        setLoading(true);
+        Vibration.vibrate([0, 100, 50, 100]);
+        Animated.sequence([
+            Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+        ]).start(() => {
+            (async () => {
+                try {
+                    const rewardData = await promotionsApi.openGift();
+                    setReward(rewardData);
+                    setPrizeRevealed(true);
+                    setError(null);
+                    Vibration.vibrate([0, 200, 100, 200]);
+                    Animated.spring(prizeAnim, { toValue: 1, useNativeDriver: true }).start();
+                } catch (err: any) {
+                    console.error('Error opening gift:', err);
+                    setError(err.response?.data?.message || 'Error al abrir el regalo. Intenta de nuevo.');
+                    setPrizeRevealed(true);
+                } finally {
+                    setLoading(false);
+                    setShakeDetected(false);
+                }
+            })();
+        });
+    };
 
     useEffect(() => {
         if (visible) {
@@ -34,70 +86,27 @@ export function ShakeModal({ visible, onClose }: ShakeModalProps) {
                 tension: 50,
                 friction: 7,
             }).start();
-
-            // Start listening to accelerometer
-            const subscription = Accelerometer.addListener((data) => {
-                const { x, y, z } = data;
-                const acceleration = Math.sqrt(x * x + y * y + z * z);
-
-                if (acceleration > 2.5 && !shakeDetected) {
-                    setShakeDetected(true);
-                    handleShake();
-                }
-            });
-
-            Accelerometer.setUpdateInterval(100);
-
-            return () => {
-                subscription.remove();
-            };
+            if (Platform.OS !== 'web') {
+                const subscription = Accelerometer.addListener(data => {
+                    const { x, y, z } = data;
+                    const acceleration = Math.sqrt(x * x + y * y + z * z);
+                    if (acceleration > 2.5 && !shakeDetected && !loading) {
+                        setShakeDetected(true);
+                        handleShake();
+                    }
+                });
+                Accelerometer.setUpdateInterval(100);
+                return () => subscription.remove();
+            }
         } else {
             scaleAnim.setValue(0);
             setShakeDetected(false);
             setPrizeRevealed(false);
+            setReward(null);
+            setError(null);
             prizeAnim.setValue(0);
         }
-    }, [visible, shakeDetected]);
-
-    const handleShake = () => {
-        // Vibrate on shake detection
-        Vibration.vibrate([0, 100, 50, 100]);
-
-        // Shake animation
-        Animated.sequence([
-            Animated.timing(shakeAnim, {
-                toValue: 10,
-                duration: 50,
-                useNativeDriver: true,
-            }),
-            Animated.timing(shakeAnim, {
-                toValue: -10,
-                duration: 50,
-                useNativeDriver: true,
-            }),
-            Animated.timing(shakeAnim, {
-                toValue: 10,
-                duration: 50,
-                useNativeDriver: true,
-            }),
-            Animated.timing(shakeAnim, {
-                toValue: 0,
-                duration: 50,
-                useNativeDriver: true,
-            }),
-        ]).start(() => {
-            setPrizeRevealed(true);
-            // Vibrate again when prize is revealed
-            Vibration.vibrate([0, 200, 100, 200]);
-
-            Animated.spring(prizeAnim, {
-                toValue: 1,
-                useNativeDriver: true,
-                tension: 50,
-                friction: 7,
-            }).start();
-        });
-    };
+    }, [visible, shakeDetected, loading]);
 
     const handleClose = () => {
         Animated.timing(scaleAnim, {
@@ -110,12 +119,7 @@ export function ShakeModal({ visible, onClose }: ShakeModalProps) {
     };
 
     return (
-        <Modal
-            visible={visible}
-            transparent
-            animationType="none"
-            onRequestClose={handleClose}
-        >
+        <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
             <View style={styles.overlay}>
                 <Animated.View
                     style={[
@@ -123,31 +127,36 @@ export function ShakeModal({ visible, onClose }: ShakeModalProps) {
                         {
                             backgroundColor: colors.card.DEFAULT,
                             borderColor: colors.border,
-                            transform: [
-                                { scale: scaleAnim },
-                                { translateX: shakeAnim },
-                            ],
+                            transform: [{ scale: scaleAnim }, { translateX: shakeAnim }],
                         },
                     ]}
                 >
-                    <TouchableOpacity
-                        style={styles.closeButton}
-                        onPress={handleClose}
-                    >
+                    <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
                         <Ionicons name="close" size={24} color={colors.foreground} />
                     </TouchableOpacity>
-
                     {!prizeRevealed ? (
                         <View style={styles.instructionContainer}>
                             <Text style={[styles.emoji, styles.giftEmoji]}>🎁</Text>
-                            <Text style={[styles.title, { color: colors.foreground }]}>
-                                ¡Agita tu teléfono!
-                            </Text>
-                            <Text style={[styles.subtitle, { color: colors.muted.foreground }]}>
-                                Descubre tu sorpresa
-                            </Text>
+                            <Text style={[styles.title, { color: colors.foreground }]}>¡Agita tu teléfono!</Text>
+                            <Text style={[styles.subtitle, { color: colors.muted.foreground }]}>Descubre tu sorpresa</Text>
+                            {loading && (
+                                <ActivityIndicator
+                                    size="large"
+                                    color={colors.primary.DEFAULT}
+                                    style={{ marginTop: spacing.lg }}
+                                />
+                            )}
                         </View>
-                    ) : (
+                    ) : error ? (
+                        <View style={styles.prizeContainer}>
+                            <Text style={[styles.emoji, styles.sparkleEmoji]}>⚠️</Text>
+                            <Text style={[styles.prizeTitle, { color: '#ff6b6b' }]}>¡Ups!</Text>
+                            <Text style={[styles.prizeDescription, { color: colors.muted.foreground }]}>{error}</Text>
+                            <TouchableOpacity style={[styles.claimButton, { backgroundColor: colors.primary.DEFAULT }]} onPress={handleClose}>
+                                <Text style={[styles.claimButtonText, { color: colors.primary.foreground }]}>Cerrar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : reward ? (
                         <Animated.View
                             style={[
                                 styles.prizeContainer,
@@ -165,25 +174,14 @@ export function ShakeModal({ visible, onClose }: ShakeModalProps) {
                             ]}
                         >
                             <Text style={[styles.emoji, styles.sparkleEmoji]}>✨</Text>
-                            <Text style={[styles.prizeTitle, { color: colors.primary.DEFAULT }]}>
-                                ¡Felicidades!
-                            </Text>
-                            <Text style={[styles.prizeAmount, { color: colors.foreground }]}>
-                                5 Apuestas Gratis
-                            </Text>
-                            <Text style={[styles.prizeDescription, { color: colors.muted.foreground }]}>
-                                Usa este bono en cualquier partido
-                            </Text>
-                            <TouchableOpacity
-                                style={[styles.claimButton, { backgroundColor: colors.primary.DEFAULT }]}
-                                onPress={handleClose}
-                            >
-                                <Text style={[styles.claimButtonText, { color: colors.primary.foreground }]}>
-                                    Reclamar Premio
-                                </Text>
+                            <Text style={[styles.prizeTitle, { color: colors.primary.DEFAULT }]}>¡Felicidades!</Text>
+                            <Text style={[styles.prizeAmount, { color: colors.foreground }]}>{reward.rewardDescription}</Text>
+                            <Text style={[styles.prizeDescription, { color: colors.muted.foreground }]}>{reward.message}</Text>
+                            <TouchableOpacity style={[styles.claimButton, { backgroundColor: colors.primary.DEFAULT }]} onPress={handleClose}>
+                                <Text style={[styles.claimButtonText, { color: colors.primary.foreground }]}>Reclamar Premio</Text>
                             </TouchableOpacity>
                         </Animated.View>
-                    )}
+                    ) : null}
                 </Animated.View>
             </View>
         </Modal>
