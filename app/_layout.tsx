@@ -18,6 +18,7 @@ export default function RootLayout() {
                 headerShown: false,
               }}
             >
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
               <Stack.Screen name="index" />
               <Stack.Screen
                 name="match/[matchId]"

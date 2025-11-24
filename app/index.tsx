@@ -17,6 +17,7 @@ import BetSlip from "@/components/bet-slip";
 import AuthModal from "@/components/auth-modal";
 import ForgotPasswordModal from "@/components/forgot-password-modal";
 import LeaguesBar from "@/components/leagues-bar";
+import { ShakeModal } from "@/components/shake-modal";
 import {
   spacing,
   borderRadius,
@@ -27,6 +28,7 @@ import {
 import { Match } from "@/constants/matches";
 import { useBetting } from "@/context/betting-context";
 import { useTheme } from "@/context/theme-context";
+import { OnboardingStorage } from "@/lib/onboarding-storage";
 
 import { useAuth } from "@/context/AuthProvider";
 
@@ -40,6 +42,7 @@ function IndexScreen() {
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [isBetSlipExpanded, setIsBetSlipExpanded] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
+  const [isShakeModalOpen, setIsShakeModalOpen] = useState(false);
   const { width } = useWindowDimensions();
   const router = useRouter();
   const { selectedBets, addBet, removeBet } = useBetting();
@@ -48,6 +51,17 @@ function IndexScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const betSlipAnim = useRef(new Animated.Value(0)).current;
   const isLargeScreen = width >= DESKTOP_BREAKPOINT;
+
+  // Check onboarding status on mount
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      const hasCompleted = await OnboardingStorage.hasCompletedOnboarding();
+      if (!hasCompleted) {
+        router.replace('/onboarding');
+      }
+    };
+    checkOnboarding();
+  }, []);
 
   const collapsedPortalBottom = spacing.md;
   const expandedPortalBottom = useMemo(() => {
@@ -238,6 +252,23 @@ function IndexScreen() {
         isOpen={isForgotPasswordOpen}
         onClose={() => setIsForgotPasswordOpen(false)}
       />
+
+      {/* Shake Modal */}
+      <ShakeModal
+        visible={isShakeModalOpen}
+        onClose={() => setIsShakeModalOpen(false)}
+      />
+
+      {/* Floating Gift Button */}
+      {!isLargeScreen && (
+        <TouchableOpacity
+          style={[styles.floatingGiftButton, { backgroundColor: colors.primary.DEFAULT }]}
+          onPress={() => setIsShakeModalOpen(true)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.giftEmoji}>🎁</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }
@@ -335,6 +366,25 @@ const createStyles = (colors: ThemeColors) =>
     mobileToggleCount: {
       fontSize: fontSize.xs,
       color: colors.primary.foreground,
+    },
+    floatingGiftButton: {
+      position: 'absolute',
+      bottom: spacing.xl * 6,
+      right: spacing.lg,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.3,
+      shadowOffset: { width: 0, height: 4 },
+      shadowRadius: 8,
+      elevation: 8,
+      zIndex: 100,
+    },
+    giftEmoji: {
+      fontSize: 32,
     },
   });
 
