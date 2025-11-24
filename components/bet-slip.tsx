@@ -23,17 +23,20 @@ import { useTheme } from "@/context/theme-context";
 interface BetSlipProps {
   bets: Bet[];
   onRemoveBet: (id: number) => void;
+  onPlaceBet: (stake: number, bets: Bet[]) => Promise<void>;
   showHeader?: boolean;
 }
 
 export default function BetSlip({
   bets,
   onRemoveBet,
+  onPlaceBet,
   showHeader = true,
 }: BetSlipProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [stake, setStake] = useState<string>("10");
+  const [isPlacing, setIsPlacing] = useState(false);
 
   const handleQuickAmount = (amount: number) => {
     const currentStake = parseFloat(stake) || 0;
@@ -43,6 +46,21 @@ export default function BetSlip({
   const totalOdds =
     bets.length > 0 ? bets.reduce((acc, bet) => acc * bet.odds, 1) : 0;
   const potentialWinnings = parseFloat(stake) * totalOdds;
+
+  const handlePlaceBet = async () => {
+    if (bets.length === 0 || parseFloat(stake) <= 0 || isPlacing) return;
+
+    setIsPlacing(true);
+    try {
+      await onPlaceBet(parseFloat(stake), bets);
+      setStake("10"); // Reset stake after successful bet
+    } catch (error) {
+      // Error handled by parent
+      console.error('[BetSlip] Failed to place bet:', error);
+    } finally {
+      setIsPlacing(false);
+    }
+  };
 
   const getTypeLabel = (bet: Bet) => {
     if (bet.label) return bet.label;
@@ -180,10 +198,10 @@ export default function BetSlip({
               <Button
                 variant="secondary"
                 size="lg"
-                onPress={() => {}}
-                disabled={bets.length === 0 || parseFloat(stake) <= 0}
+                onPress={handlePlaceBet}
+                disabled={bets.length === 0 || parseFloat(stake) <= 0 || isPlacing}
               >
-                Place Bet
+                {isPlacing ? "Placing..." : "Place Bet"}
               </Button>
             </View>
           </ScrollView>

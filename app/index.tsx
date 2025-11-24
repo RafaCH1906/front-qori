@@ -32,6 +32,10 @@ import { useTheme } from "@/context/theme-context";
 import { OnboardingStorage } from "@/lib/onboarding-storage";
 
 import { useAuth } from "@/context/AuthProvider";
+import { useBalance } from "@/context/balance-context";
+import { useToast } from "@/context/toast-context";
+import { placeBet, PlaceBetRequest } from "@/lib/api/bets";
+import BetConfirmationModal from "@/components/bet-confirmation-modal";
 
 const DESKTOP_BREAKPOINT = 900;
 const MOBILE_BET_SLIP_MAX_HEIGHT = 420;
@@ -44,11 +48,16 @@ function IndexScreen() {
   const [isBetSlipExpanded, setIsBetSlipExpanded] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
   const [isShakeModalOpen, setIsShakeModalOpen] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingBet, setPendingBet] = useState<{ stake: number, bets: any[] } | null>(null);
+  const [isPlacingBet, setIsPlacingBet] = useState(false);
   const { width } = useWindowDimensions();
   const router = useRouter();
-  const { selectedBets, addBet, removeBet } = useBetting();
+  const { selectedBets, addBet, removeBet, clearBets } = useBetting();
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { balance, refreshBalance } = useBalance();
+  const { showToast } = useToast();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const betSlipAnim = useRef(new Animated.Value(0)).current;
   const isLargeScreen = width >= DESKTOP_BREAKPOINT;
@@ -97,6 +106,47 @@ function IndexScreen() {
       pathname: "/match/[matchId]",
       params: { matchId: match.id.toString() },
     });
+  };
+
+  const handlePlaceBet = async (stake: number, bets: any[]) => {
+    if (!user) {
+      showToast("Please login to place bets", "error");
+      return;
+    }
+    setPendingBet({ stake, bets });
+    setShowConfirmation(true);
+  };
+
+  const confirmPlaceBet = async () => {
+    if (!pendingBet || !user) return;
+
+    setIsPlacingBet(true);
+    try {
+      // Map bets to selections with optionId
+      const selections = pendingBet.bets.map(bet => ({
+        optionId: bet.id, // Assuming bet.id is the optionId from the backend
+        odds: bet.odds,
+      }));
+
+      const request: PlaceBetRequest = {
+        userId: user.id,
+        totalStake: pendingBet.stake,
+        selections,
+      };
+
+      await placeBet(request);
+      showToast("Bet placed successfully!", "success");
+      clearBets();
+      await refreshBalance(); // Refresh balance after bet
+      setShowConfirmation(false);
+      setPendingBet(null);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Failed to place bet. Please try again.";
+      showToast(errorMessage, "error");
+      console.error('[IndexScreen] Failed to place bet:', error);
+    } finally {
+      setIsPlacingBet(false);
+    }
   };
 
   const toggleMobileBetSlip = () => {
@@ -181,6 +231,7 @@ function IndexScreen() {
             <BetSlip
               bets={selectedBets}
               onRemoveBet={handleRemoveBet}
+              onPlaceBet={handlePlaceBet}
               showHeader
             />
           </View>
@@ -207,6 +258,7 @@ function IndexScreen() {
               <BetSlip
                 bets={selectedBets}
                 onRemoveBet={handleRemoveBet}
+                onPlaceBet={handlePlaceBet}
                 showHeader={false}
               />
             </View>
@@ -261,6 +313,19 @@ function IndexScreen() {
       <ShakeModal
         visible={isShakeModalOpen}
         onClose={() => setIsShakeModalOpen(false)}
+      />
+
+      {/* Bet Confirmation Modal */}
+      <BetConfirmationModal
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        onConfirm={confirmPlaceBet}
+        bets={pendingBet?.bets || []}
+        stake={pendingBet?.stake || 0}
+        totalOdds={pendingBet?.bets.reduce((acc, bet) => acc * bet.odds, 1) || 0}
+        potentialWinnings={(pendingBet?.stake || 0) * (pendingBet?.bets.reduce((acc, bet) => acc * bet.odds, 1) || 0)}
+        balance={balance}
+        isLoading={isPlacingBet}
       />
 
 

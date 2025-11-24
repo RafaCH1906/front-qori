@@ -6,6 +6,7 @@ import { spacing, borderRadius, ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/context/theme-context";
 
 import { useAuth } from "@/context/AuthProvider";
+import { useBalance } from "@/context/balance-context";
 import { useRouter } from "expo-router";
 
 interface HeaderProps {
@@ -16,6 +17,7 @@ interface HeaderProps {
 export default function Header({ onLoginClick, onRegisterClick }: HeaderProps) {
   const { colors, toggleTheme, theme } = useTheme();
   const { user } = useAuth();
+  const { balance, loading } = useBalance();
   const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -47,9 +49,17 @@ export default function Header({ onLoginClick, onRegisterClick }: HeaderProps) {
           </TouchableOpacity>
 
           {user ? (
-            <Button size="sm" onPress={() => router.push("/profile")}>
-              Profile
-            </Button>
+            <>
+              <View style={styles.balanceContainer}>
+                <Ionicons name="wallet-outline" size={18} color={colors.primary.DEFAULT} />
+                <Text style={styles.balanceText}>
+                  {loading ? '...' : `S/ ${balance.toFixed(2)}`}
+                </Text>
+              </View>
+              <Button size="sm" onPress={() => router.push("/profile")}>
+                Profile
+              </Button>
+            </>
           ) : (
             <>
               <Button variant="outline" size="sm" onPress={onLoginClick}>
@@ -99,9 +109,21 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: "center",
       gap: spacing.sm,
     },
+    balanceContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+      backgroundColor: colors.muted.DEFAULT,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: borderRadius.md,
+    },
+    balanceText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.foreground,
+    },
     themeButton: {
       padding: spacing.sm,
-      borderRadius: borderRadius.md,
-      backgroundColor: colors.muted.DEFAULT,
     },
   });
