@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "QORIBET",
-    "slug": "qoribet-mobile",
+    "slug": "qoribet",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -47,7 +47,11 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "0f4f4f1f-f8c6-4b9b-9f72-c1c0499dd34c"
       }
-    }
+    },
+    "owner": "rafach1906"
   }
 }
