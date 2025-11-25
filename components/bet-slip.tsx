@@ -43,6 +43,10 @@ export default function BetSlip({
     setStake((currentStake + amount).toString());
   };
 
+  // Determine if it's a simple or combined bet
+  const isCombinedBet = bets.length > 1;
+  const betTypeLabel = isCombinedBet ? "Apuesta Combinada" : "Apuesta Simple";
+
   const totalOdds =
     bets.length > 0 ? bets.reduce((acc, bet) => acc * bet.odds, 1) : 0;
   const potentialWinnings = parseFloat(stake) * totalOdds;
@@ -101,16 +105,16 @@ export default function BetSlip({
     <View style={styles.container}>
       {showHeader && (
         <View style={styles.header}>
-          <Text style={styles.headerText}>My Bets</Text>
+          <Text style={styles.headerText}>Mis Apuestas</Text>
         </View>
       )}
 
       {bets.length === 0 ? (
         <Card style={styles.card}>
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No bets selected yet</Text>
+            <Text style={styles.emptyText}>No hay apuestas seleccionadas</Text>
             <Text style={styles.emptySubText}>
-              Select odds from matches to add bets
+              Selecciona cuotas de los partidos para agregar apuestas
             </Text>
           </View>
         </Card>
@@ -121,6 +125,29 @@ export default function BetSlip({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={true}
           >
+            {/* Bet Type Indicator */}
+            <View style={[
+              styles.betTypeIndicator,
+              isCombinedBet ? styles.combinedBetIndicator : styles.simpleBetIndicator
+            ]}>
+              <Ionicons
+                name={isCombinedBet ? "git-merge-outline" : "document-text-outline"}
+                size={18}
+                color={isCombinedBet ? colors.accent.DEFAULT : colors.primary.DEFAULT}
+              />
+              <Text style={[
+                styles.betTypeText,
+                isCombinedBet ? styles.combinedBetText : styles.simpleBetText
+              ]}>
+                {betTypeLabel}
+              </Text>
+              {isCombinedBet && (
+                <Text style={styles.betTypeDescription}>
+                  (Todas las selecciones deben ganar)
+                </Text>
+              )}
+            </View>
+
             <View style={styles.betsContainer}>
               {bets.map((bet) => (
                 <View key={bet.id} style={styles.betItem}>
@@ -155,11 +182,11 @@ export default function BetSlip({
 
             <View style={styles.stakeContainer}>
               <View style={styles.stakeSection}>
-                <Text style={styles.sectionLabel}>Stake (Soles)</Text>
+                <Text style={styles.sectionLabel}>Monto a Apostar (Soles)</Text>
                 <Input
                   value={stake}
                   onChangeText={setStake}
-                  placeholder="Enter amount"
+                  placeholder="Ingresa el monto"
                   keyboardType="numeric"
                 />
 
@@ -178,17 +205,17 @@ export default function BetSlip({
 
               <View style={styles.summaryCard}>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Total Odds:</Text>
+                  <Text style={styles.summaryLabel}>Cuota Total:</Text>
                   <Text style={styles.summaryValue}>{totalOdds.toFixed(2)}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Stake:</Text>
+                  <Text style={styles.summaryLabel}>Monto:</Text>
                   <Text style={styles.summaryValueNormal}>
                     S/ {parseFloat(stake || "0").toFixed(2)}
                   </Text>
                 </View>
                 <View style={styles.summaryRowFinal}>
-                  <Text style={styles.summaryFinalLabel}>Potential Win:</Text>
+                  <Text style={styles.summaryFinalLabel}>Ganancia Potencial:</Text>
                   <Text style={styles.summaryFinalValue}>
                     S/ {potentialWinnings.toFixed(2)}
                   </Text>
@@ -201,7 +228,7 @@ export default function BetSlip({
                 onPress={handlePlaceBet}
                 disabled={bets.length === 0 || parseFloat(stake) <= 0 || isPlacing}
               >
-                {isPlacing ? "Placing..." : "Place Bet"}
+                {isPlacing ? "Procesando..." : "Realizar Apuesta"}
               </Button>
             </View>
           </ScrollView>
@@ -381,6 +408,40 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.xl,
       fontWeight: fontWeight.bold,
       color: colors.accent.DEFAULT,
+    },
+    betTypeIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: spacing.md,
+      marginHorizontal: spacing.lg,
+      marginTop: spacing.md,
+      marginBottom: spacing.sm,
+      borderRadius: borderRadius.lg,
+      gap: spacing.sm,
+      borderWidth: 2,
+    },
+    simpleBetIndicator: {
+      backgroundColor: withAlpha(colors.primary.DEFAULT, 0.1),
+      borderColor: withAlpha(colors.primary.DEFAULT, 0.3),
+    },
+    combinedBetIndicator: {
+      backgroundColor: withAlpha(colors.accent.DEFAULT, 0.1),
+      borderColor: withAlpha(colors.accent.DEFAULT, 0.3),
+    },
+    betTypeText: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.bold,
+    },
+    simpleBetText: {
+      color: colors.primary.DEFAULT,
+    },
+    combinedBetText: {
+      color: colors.accent.DEFAULT,
+    },
+    betTypeDescription: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
+      fontStyle: 'italic',
     },
   });
 

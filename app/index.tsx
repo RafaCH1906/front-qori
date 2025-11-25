@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
   Animated,
   Platform,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -110,7 +111,7 @@ function IndexScreen() {
 
   const handlePlaceBet = async (stake: number, bets: any[]) => {
     if (!user) {
-      showToast("Please login to place bets", "error");
+      showToast("Por favor, inicia sesión para realizar apuestas", "error");
       return;
     }
     setPendingBet({ stake, bets });
@@ -135,14 +136,44 @@ function IndexScreen() {
       };
 
       await placeBet(request);
-      showToast("Bet placed successfully!", "success");
+
+      // Show success message with bet details
+      const betType = pendingBet.bets.length > 1 ? "combinada" : "simple";
+      const totalOdds = pendingBet.bets.reduce((acc, bet) => acc * bet.odds, 1);
+      const potentialWin = pendingBet.stake * totalOdds;
+
+      Alert.alert(
+        "¡Apuesta Realizada con Éxito!",
+        `Tu apuesta ${betType} ha sido registrada.\n\n` +
+        `Monto apostado: S/ ${pendingBet.stake.toFixed(2)}\n` +
+        `Cuota total: ${totalOdds.toFixed(2)}\n` +
+        `Ganancia potencial: S/ ${potentialWin.toFixed(2)}\n\n` +
+        `¡Buena suerte! 🍀`,
+        [{ text: "Entendido" }]
+      );
+
       clearBets();
       await refreshBalance(); // Refresh balance after bet
       setShowConfirmation(false);
       setPendingBet(null);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Failed to place bet. Please try again.";
-      showToast(errorMessage, "error");
+      let errorMessage = "Error al realizar la apuesta. Por favor, intenta nuevamente.";
+
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        }
+      } else if (error.message) {
+        if (error.message.includes('Network')) {
+          errorMessage = "Error de conexión. Verifica tu internet.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      Alert.alert("Error al Realizar Apuesta", errorMessage, [{ text: "OK" }]);
       console.error('[IndexScreen] Failed to place bet:', error);
     } finally {
       setIsPlacingBet(false);

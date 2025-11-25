@@ -47,6 +47,8 @@ export default function BetConfirmationModal({
     const styles = useMemo(() => createStyles(colors), [colors]);
 
     const insufficientBalance = stake > balance;
+    const isCombinedBet = bets.length > 1;
+    const betTypeLabel = isCombinedBet ? "Apuesta Combinada" : "Apuesta Simple";
 
     return (
         <Modal
@@ -60,15 +62,33 @@ export default function BetConfirmationModal({
                     <View style={styles.content}>
                         {/* Header */}
                         <View style={styles.header}>
-                            <Text style={styles.title}>Confirm Bet</Text>
+                            <Text style={styles.title}>Confirmar Apuesta</Text>
                             <TouchableOpacity onPress={onClose} disabled={isLoading}>
                                 <Ionicons name="close" size={24} color={colors.foreground} />
                             </TouchableOpacity>
                         </View>
 
+                        {/* Bet Type Badge */}
+                        <View style={[
+                            styles.betTypeBadge,
+                            isCombinedBet ? styles.combinedBadge : styles.simpleBadge
+                        ]}>
+                            <Ionicons
+                                name={isCombinedBet ? "git-merge-outline" : "document-text-outline"}
+                                size={16}
+                                color={isCombinedBet ? colors.accent.DEFAULT : colors.primary.DEFAULT}
+                            />
+                            <Text style={[
+                                styles.betTypeBadgeText,
+                                isCombinedBet ? styles.combinedBadgeText : styles.simpleBadgeText
+                            ]}>
+                                {betTypeLabel}
+                            </Text>
+                        </View>
+
                         {/* Bet Summary */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Your Selections</Text>
+                            <Text style={styles.sectionTitle}>Tus Selecciones</Text>
                             {bets.map((bet, index) => (
                                 <View key={bet.id} style={styles.betItem}>
                                     <View style={styles.betInfo}>
@@ -87,15 +107,15 @@ export default function BetConfirmationModal({
                         {/* Financial Summary */}
                         <View style={styles.summarySection}>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Total Odds:</Text>
+                                <Text style={styles.summaryLabel}>Cuota Total:</Text>
                                 <Text style={styles.summaryValue}>{totalOdds.toFixed(2)}</Text>
                             </View>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Stake:</Text>
+                                <Text style={styles.summaryLabel}>Monto Apostado:</Text>
                                 <Text style={styles.summaryValue}>S/ {stake.toFixed(2)}</Text>
                             </View>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Your Balance:</Text>
+                                <Text style={styles.summaryLabel}>Tu Saldo:</Text>
                                 <Text style={[
                                     styles.summaryValue,
                                     insufficientBalance && styles.errorText
@@ -104,19 +124,29 @@ export default function BetConfirmationModal({
                                 </Text>
                             </View>
                             <View style={[styles.summaryRow, styles.summaryRowFinal]}>
-                                <Text style={styles.summaryFinalLabel}>Potential Win:</Text>
+                                <Text style={styles.summaryFinalLabel}>Ganancia Potencial:</Text>
                                 <Text style={styles.summaryFinalValue}>
                                     S/ {potentialWinnings.toFixed(2)}
                                 </Text>
                             </View>
                         </View>
 
+                        {/* Info for combined bets */}
+                        {isCombinedBet && !insufficientBalance && (
+                            <View style={styles.infoContainer}>
+                                <Ionicons name="information-circle" size={20} color={colors.accent.DEFAULT} />
+                                <Text style={styles.infoText}>
+                                    En las apuestas combinadas, todas tus selecciones deben ganar para obtener la ganancia.
+                                </Text>
+                            </View>
+                        )}
+
                         {/* Warning for insufficient balance */}
                         {insufficientBalance && (
                             <View style={styles.warningContainer}>
                                 <Ionicons name="warning" size={20} color={colors.destructive.DEFAULT} />
                                 <Text style={styles.warningText}>
-                                    Insufficient balance. Please deposit funds to place this bet.
+                                    Saldo insuficiente. Por favor, deposita fondos para realizar esta apuesta.
                                 </Text>
                             </View>
                         )}
@@ -130,7 +160,7 @@ export default function BetConfirmationModal({
                                 disabled={isLoading}
                                 style={styles.cancelButton}
                             >
-                                Cancel
+                                Cancelar
                             </Button>
                             <Button
                                 variant="secondary"
@@ -142,10 +172,10 @@ export default function BetConfirmationModal({
                                 {isLoading ? (
                                     <View style={styles.loadingContainer}>
                                         <ActivityIndicator size="small" color={colors.background} />
-                                        <Text style={styles.loadingText}>Placing...</Text>
+                                        <Text style={styles.loadingText}>Procesando...</Text>
                                     </View>
                                 ) : (
-                                    "Confirm Bet"
+                                    "Confirmar Apuesta"
                                 )}
                             </Button>
                         </View>
@@ -291,5 +321,51 @@ const createStyles = (colors: ThemeColors) =>
             color: colors.background,
             fontSize: fontSize.base,
             fontWeight: fontWeight.semibold,
+        },
+        betTypeBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+            borderRadius: borderRadius.md,
+            gap: spacing.xs,
+            alignSelf: 'flex-start',
+            marginBottom: spacing.md,
+            borderWidth: 1.5,
+        },
+        simpleBadge: {
+            backgroundColor: `${colors.primary.DEFAULT}15`,
+            borderColor: `${colors.primary.DEFAULT}40`,
+        },
+        combinedBadge: {
+            backgroundColor: `${colors.accent.DEFAULT}15`,
+            borderColor: `${colors.accent.DEFAULT}40`,
+        },
+        betTypeBadgeText: {
+            fontSize: fontSize.sm,
+            fontWeight: fontWeight.bold,
+        },
+        simpleBadgeText: {
+            color: colors.primary.DEFAULT,
+        },
+        combinedBadgeText: {
+            color: colors.accent.DEFAULT,
+        },
+        infoContainer: {
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            backgroundColor: `${colors.accent.DEFAULT}10`,
+            padding: spacing.md,
+            borderRadius: borderRadius.md,
+            marginBottom: spacing.lg,
+            gap: spacing.sm,
+            borderWidth: 1,
+            borderColor: `${colors.accent.DEFAULT}30`,
+        },
+        infoText: {
+            flex: 1,
+            fontSize: fontSize.sm,
+            color: colors.foreground,
+            lineHeight: 20,
         },
     });
