@@ -152,13 +152,15 @@ export default function AuthModal({
     try {
       if (mode === "login") {
         console.log('[AUTH MODAL] Attempting login with:', email);
-        const userData = await login({ email: email, password });
+        await login({ email: email, password });
         console.log('[AUTH MODAL] Login successful');
-
-        // Show welcome message with user's name
-        const userName = userData?.firstName || "Usuario";
-        showToast(`¡Bienvenido de nuevo, ${userName}!`, "success");
         handleClose();
+
+        // Show welcome message after modal closes
+        // Note: We'll get the actual user name from the auth context after login completes
+        setTimeout(() => {
+          showToast(`¡Bienvenido de nuevo!`, "success");
+        }, 300);
       } else {
         // Construct payload matching backend RegisterRequest
         const payload = {
@@ -174,13 +176,12 @@ export default function AuthModal({
         };
         console.log('[AUTH MODAL] Attempting registration');
         const userData = await register(payload);
+        handleClose();
 
-        // Show email verification message
-        Alert.alert(
-          "¡Registro Exitoso!",
-          "Se ha enviado un correo de verificación a tu email. Por favor, verifica tu correo antes de iniciar sesión.",
-          [{ text: "Entendido", onPress: () => handleClose() }]
-        );
+        // Show success toast with email verification message
+        setTimeout(() => {
+          showToast("✅ Cuenta creada exitosamente. Revise su correo para verificar su cuenta.", "success");
+        }, 300);
 
         // Note: User won't be automatically logged in until they verify their email
         // The backend will reject login attempts for unverified users

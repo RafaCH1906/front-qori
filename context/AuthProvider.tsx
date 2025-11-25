@@ -5,6 +5,7 @@ import { AuthStorage, UserData } from "@/lib/auth/storage";
 type AuthContextType = {
     user: UserData | null;
     loading: boolean;
+    isAuthenticated: boolean;
     login: (payload: { username?: string; email?: string; password: string }) => Promise<void>;
     register: (payload: any) => Promise<UserData>;
     logout: () => Promise<void>;
@@ -16,6 +17,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const isAuthenticated = !!user;
 
     useEffect(() => {
         const initAuth = async () => {
@@ -92,14 +95,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const register = async (payload: any): Promise<UserData> => {
         try {
             const data = await AuthApi.register(payload);
-            // After registration, automatically log the user in
+            // After registration, save user data if provided
             if (data.accessToken && data.user) {
                 await AuthStorage.saveToken(data.accessToken);
                 await AuthStorage.saveUserData(data.user);
                 setUser(data.user);
                 return data.user;
             }
-            throw new Error('Registration succeeded but no user data returned');
+            // If no user data returned, still return a basic user object
+            // This can happen if backend only returns token
+            const basicUser: UserData = {
+                id: 0,
+                username: payload.username || payload.email,
+                email: payload.email,
+                firstName: payload.firstName || '',
+                lastName: payload.lastName || '',
+                phone: payload.phone || '',
+                role: 'PLAYER'
+            };
+            return basicUser;
         } catch (error) {
             console.error('Registration error:', error);
             throw error;
@@ -126,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, isAuthenticated, login, register, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );
