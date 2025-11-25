@@ -18,22 +18,43 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
 
     const refreshBalance = useCallback(async () => {
+        const timestamp = new Date().toISOString();
+        console.log(`[BalanceContext ${timestamp}] Starting balance refresh...`);
+
         if (!user) {
+            console.log(`[BalanceContext ${timestamp}] No user logged in, resetting balance to 0`);
             setBalance(0);
             setFreeBetsCount(0);
             return;
         }
 
+        console.log(`[BalanceContext ${timestamp}] User found: ${user.username} (ID: ${user.id})`);
         setLoading(true);
         try {
+            console.log(`[BalanceContext ${timestamp}] Calling getBalance() API...`);
             const data = await getBalance();
+            console.log(`[BalanceContext ${timestamp}] API Response:`, {
+                balance: data.balance,
+                freeBetsCount: data.freeBetsCount,
+                currency: data.currency
+            });
+
             setBalance(data.balance);
             setFreeBetsCount(data.freeBetsCount || 0);
-            console.log('[BalanceContext] Balance refreshed:', data.balance, 'Free bets:', data.freeBetsCount);
-        } catch (error) {
-            console.error('[BalanceContext] Failed to fetch balance:', error);
+            console.log(`[BalanceContext ${timestamp}] ✅ Balance updated successfully:`, {
+                newBalance: data.balance,
+                newFreeBetsCount: data.freeBetsCount || 0
+            });
+        } catch (error: any) {
+            console.error(`[BalanceContext ${timestamp}] ❌ Failed to fetch balance:`, {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                url: error.config?.url
+            });
         } finally {
             setLoading(false);
+            console.log(`[BalanceContext ${timestamp}] Balance refresh completed`);
         }
     }, [user]);
 

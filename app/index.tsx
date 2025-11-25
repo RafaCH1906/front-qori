@@ -153,7 +153,13 @@ function IndexScreen() {
       );
 
       clearBets();
+
+      // Wait a bit for the database transaction to commit before refreshing balance
+      console.log('[IndexScreen] Waiting for DB transaction to commit...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log('[IndexScreen] Refreshing balance after bet...');
       await refreshBalance(); // Refresh balance after bet
+
       setShowConfirmation(false);
       setPendingBet(null);
     } catch (error: any) {

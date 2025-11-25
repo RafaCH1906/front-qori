@@ -17,6 +17,7 @@ import { spacing, borderRadius, fontSize, fontWeight } from '@/constants/theme';
 import { promotionsApi, GiftReward } from '@/lib/api/promotions';
 import { useAuth } from '@/context/AuthProvider';
 import { AuthStorage } from '@/lib/auth/storage';
+import { useBalance } from '@/context/balance-context';
 
 interface ShakeModalProps {
     visible: boolean;
@@ -26,6 +27,7 @@ interface ShakeModalProps {
 export function ShakeModal({ visible, onClose }: ShakeModalProps) {
     const { colors } = useTheme();
     const { user } = useAuth();
+    const { refreshBalance } = useBalance();
     const [shakeDetected, setShakeDetected] = useState(false);
     const [prizeRevealed, setPrizeRevealed] = useState(false);
     const [reward, setReward] = useState<GiftReward | null>(null);
@@ -66,6 +68,11 @@ export function ShakeModal({ visible, onClose }: ShakeModalProps) {
                     setError(null);
                     Vibration.vibrate([0, 200, 100, 200]);
                     Animated.spring(prizeAnim, { toValue: 1, useNativeDriver: true }).start();
+
+                    // Refresh balance after receiving gift reward
+                    console.log('[ShakeModal] Gift opened successfully, refreshing balance...');
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    await refreshBalance();
                 } catch (err: any) {
                     console.error('Error opening gift:', err);
                     setError(err.response?.data?.message || 'Error al abrir el regalo. Intenta de nuevo.');
