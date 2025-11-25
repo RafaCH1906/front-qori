@@ -4,6 +4,7 @@ import { useAuth } from './AuthProvider';
 
 interface BalanceContextValue {
     balance: number;
+    freeBetsCount: number;
     loading: boolean;
     refreshBalance: () => Promise<void>;
 }
@@ -12,12 +13,14 @@ const BalanceContext = createContext<BalanceContextValue | undefined>(undefined)
 
 export function BalanceProvider({ children }: { children: React.ReactNode }) {
     const [balance, setBalance] = useState<number>(0);
+    const [freeBetsCount, setFreeBetsCount] = useState<number>(0);
     const [loading, setLoading] = useState(false);
     const { user } = useAuth();
 
     const refreshBalance = useCallback(async () => {
         if (!user) {
             setBalance(0);
+            setFreeBetsCount(0);
             return;
         }
 
@@ -25,7 +28,8 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
         try {
             const data = await getBalance();
             setBalance(data.balance);
-            console.log('[BalanceContext] Balance refreshed:', data.balance);
+            setFreeBetsCount(data.freeBetsCount || 0);
+            console.log('[BalanceContext] Balance refreshed:', data.balance, 'Free bets:', data.freeBetsCount);
         } catch (error) {
             console.error('[BalanceContext] Failed to fetch balance:', error);
         } finally {
@@ -38,7 +42,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
     }, [refreshBalance]);
 
     return (
-        <BalanceContext.Provider value={{ balance, loading, refreshBalance }}>
+        <BalanceContext.Provider value={{ balance, freeBetsCount, loading, refreshBalance }}>
             {children}
         </BalanceContext.Provider>
     );

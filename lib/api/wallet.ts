@@ -3,6 +3,7 @@ import api from "./axios";
 export interface BalanceResponse {
     balance: number;
     currency: string;
+    freeBetsCount: number;
 }
 
 export interface DepositRequest {

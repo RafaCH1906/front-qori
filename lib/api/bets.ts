@@ -9,6 +9,7 @@ export interface PlaceBetRequest {
     userId: number;
     totalStake: number;
     selections: BetSelection[];
+    useFreeBet?: boolean;
 }
 
 export interface BetResponse {
