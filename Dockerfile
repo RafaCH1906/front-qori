@@ -9,8 +9,6 @@ WORKDIR /app
 RUN npm install -g @expo/ngrok@^4.1.0 expo-cli
 #Copiar dependencias
 COPY package.json package-lock.json ./
-RUN npm installs
-
 #Copiar proyecto
 COPY . .
 
