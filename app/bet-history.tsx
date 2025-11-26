@@ -63,7 +63,28 @@ export default function BetHistoryScreen() {
     try {
       setIsLoading(true);
       const data = await getBetHistory(user.id);
-      setBets(data);
+
+      // Map API response to local Bet interface
+      const mappedBets: Bet[] = data.map((apiBet: any) => ({
+        id: apiBet.id,
+        amount: apiBet.totalStake,
+        date: apiBet.placedAt,
+        state: apiBet.state || apiBet.status, // Handle potential naming difference
+        betType: apiBet.selections.length > 1 ? "COMBINED" : "SINGLE",
+        totalOdds: apiBet.totalOdds,
+        selections: apiBet.selections.map((sel: any) => ({
+          id: sel.id,
+          odds: sel.odds,
+          state: sel.state || "PENDING",
+          option: {
+            id: sel.option?.id || sel.optionId,
+            name: sel.option?.name || "Unknown",
+            description: sel.option?.description || "",
+          }
+        }))
+      }));
+
+      setBets(mappedBets);
     } catch (error) {
       console.error("Failed to fetch bet history:", error);
     } finally {
@@ -79,6 +100,13 @@ export default function BetHistoryScreen() {
 
   useEffect(() => {
     fetchBets();
+
+    // Auto-refresh every 10 seconds to check for settled bets
+    const intervalId = setInterval(() => {
+      fetchBets();
+    }, 10000);
+
+    return () => clearInterval(intervalId);
   }, [user]);
 
   const filteredBets = filter === "ALL"
@@ -193,6 +221,7 @@ export default function BetHistoryScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
 
       {/* Bets List */}
       {isLoading ? (
@@ -346,7 +375,7 @@ const createStyles = (colors: ThemeColors) =>
     filterButton: {
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.sm,
-      borderRadius: borderRadius.full,
+      borderRadius: 999,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card.DEFAULT,

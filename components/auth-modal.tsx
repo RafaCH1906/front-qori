@@ -170,15 +170,13 @@ export default function AuthModal({
     try {
       if (mode === "login") {
         console.log('[AUTH MODAL] Attempting login with:', email);
-        await login({ email: email, password });
+        const userData = await login({ email: email, password });
         console.log('[AUTH MODAL] Login successful');
         handleClose();
 
         // Show welcome message after modal closes
-        // Note: We'll get the actual user name from the auth context after login completes
         setTimeout(() => {
-          // Try to get name from email if not available yet
-          const displayName = firstName || email.split('@')[0];
+          const displayName = userData?.firstName || "";
           showToast(`¡Bienvenido de nuevo, ${displayName}!`, "success");
         }, 300);
       } else {

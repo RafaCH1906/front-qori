@@ -6,7 +6,7 @@ type AuthContextType = {
     user: UserData | null;
     loading: boolean;
     isAuthenticated: boolean;
-    login: (payload: { username?: string; email?: string; password: string }) => Promise<void>;
+    login: (payload: { username?: string; email?: string; password: string }) => Promise<UserData>;
     register: (payload: any) => Promise<UserData>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
@@ -86,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('[AuthProvider] Saving user data:', userData);
             await AuthStorage.saveUserData(userData);
             setUser(userData);
+            return userData;
         } catch (error) {
             console.error('[AuthProvider] Login error:', error);
             throw error;
