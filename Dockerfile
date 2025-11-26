@@ -32,4 +32,4 @@ ENV EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
 ENV REACT_NATIVE_PACKAGER_HOSTNAME=0.0.0.0
 
 # ---- Run server + Expo juntos ----
-CMD node server.js & npx expo start --tunnel
+CMD ["concurrently", "node server.js", "expo start --tunnel"]
