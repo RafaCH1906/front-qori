@@ -406,14 +406,14 @@ const createStyles = (colors: ThemeColors) =>
     },
     mainColumn: {
       flexDirection: "column",
-      paddingHorizontal: spacing.md,
+      paddingHorizontal: 0, // Removed global padding for edge-to-edge scrolling
       paddingVertical: spacing.md,
       gap: spacing.md,
     },
     contentWrapper: {
       flex: 1,
       maxWidth: 1000,
-      paddingRight: spacing.lg,
+      paddingRight: 0, // Reset padding
     },
     betSlipContainer: {
       width: 450,

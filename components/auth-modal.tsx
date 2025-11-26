@@ -278,7 +278,14 @@ export default function AuthModal({
       >
         <View style={styles.overlay}>
           <Card style={styles.card}>
-            <ScrollView>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                flexGrow: 1,
+                paddingBottom: Platform.OS === 'android' ? spacing.xl : 0,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.content}>
                 {/* Header */}
                 <View style={styles.header}>
@@ -541,30 +548,31 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: "rgba(0, 0, 0, 0.5)",
-      padding: spacing.lg,
+      padding: Platform.OS === 'android' ? spacing.sm : spacing.lg, // Reduced padding on Android
     },
     card: {
       width: "100%",
       maxWidth: 448,
       backgroundColor: colors.card.DEFAULT,
-      maxHeight: "90%",
+      maxHeight: Platform.OS === 'android' ? "95%" : "90%", // More height on Android
     },
     content: {
-      padding: spacing.xl,
+      padding: Platform.OS === 'android' ? spacing.md : spacing.xl, // Reduced padding on Android
+      paddingBottom: Platform.OS === 'android' ? spacing.xl : spacing.xl, // Extra bottom padding for button visibility
     },
     header: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: spacing.xl,
+      marginBottom: Platform.OS === 'android' ? spacing.lg : spacing.xl,
     },
     title: {
-      fontSize: fontSize["2xl"],
+      fontSize: Platform.OS === 'android' ? fontSize.xl : fontSize["2xl"], // Slightly smaller on Android
       fontWeight: fontWeight.bold,
       color: colors.foreground,
     },
     form: {
-      gap: spacing.lg,
+      gap: Platform.OS === 'android' ? spacing.md : spacing.lg, // Reduced gap on Android
     },
     row: {
       flexDirection: "row",
@@ -587,7 +595,7 @@ const createStyles = (colors: ThemeColors) =>
     errorContainer: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: "rgba(239, 68, 68, 0.1)", // Light red background
+      backgroundColor: "rgba(239, 68, 68, 0.1)",
       padding: spacing.md,
       borderRadius: borderRadius.md,
       marginBottom: spacing.md,
@@ -617,6 +625,7 @@ const createStyles = (colors: ThemeColors) =>
       paddingTop: spacing.lg,
       borderTopWidth: 1,
       borderTopColor: colors.border,
+      marginBottom: Platform.OS === 'android' ? spacing.lg : 0, // Extra bottom margin on Android
     },
     switchRow: {
       flexDirection: "row",

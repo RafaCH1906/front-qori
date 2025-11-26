@@ -19,13 +19,25 @@ export interface LocationResult {
     error: string | null;
 }
 
-export async function requestLocationPermission(): Promise<boolean> {
+export type PermissionStatus = 'granted' | 'denied' | 'undetermined';
+
+export async function getPermissionStatus(): Promise<PermissionStatus> {
+    try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        return status;
+    } catch (error) {
+        console.error('[LocationService] Failed to get permission status:', error);
+        return 'undetermined';
+    }
+}
+
+export async function requestLocationPermission(): Promise<PermissionStatus> {
     try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        return status === 'granted';
+        return status;
     } catch (error) {
         console.error('[LocationService] Permission request failed:', error);
-        return false;
+        return 'denied';
     }
 }
 
@@ -104,8 +116,8 @@ export async function isUserInPeru(): Promise<LocationResult> {
         };
     }
 
-    const hasPermission = await requestLocationPermission();
-    if (!hasPermission) {
+    const status = await requestLocationPermission();
+    if (status !== 'granted') {
         return {
             isInPeru: false,
             countryCode: null,

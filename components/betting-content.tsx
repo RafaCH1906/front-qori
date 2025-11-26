@@ -210,7 +210,7 @@ function formatMatchTime(isoDate: string): string {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, paddingHorizontal: spacing.md },
     centerContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xl, minHeight: 400 },
     loadingText: { marginTop: spacing.sm, fontSize: fontSize.base, color: colors.muted.foreground },
     errorIcon: { fontSize: 48, marginBottom: spacing.md },

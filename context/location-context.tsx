@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { isUserInPeru, clearLocationCache, LocationResult } from '@/lib/services/location-service';
+import { isUserInPeru, clearLocationCache, LocationResult, getPermissionStatus, PermissionStatus, requestLocationPermission } from '@/lib/services/location-service';
 
 interface LocationContextValue {
     isInPeru: boolean | null;
     isLoading: boolean;
     error: string | null;
     locationData: LocationResult | null;
+    permissionStatus: PermissionStatus;
     checkLocation: () => Promise<void>;
+    requestPermission: () => Promise<void>;
     clearCache: () => void;
 }
 
@@ -17,17 +19,35 @@ interface LocationProviderProps {
     checkOnMount?: boolean; // Whether to check location automatically on mount
 }
 
-export function LocationProvider({ children, checkOnMount = false }: LocationProviderProps) {
+export function LocationProvider({ children, checkOnMount = true }: LocationProviderProps) {
     const [isInPeru, setIsInPeru] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [locationData, setLocationData] = useState<LocationResult | null>(null);
+    const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>('undetermined');
+
+    const checkPermission = useCallback(async () => {
+        const status = await getPermissionStatus();
+        setPermissionStatus(status);
+        return status;
+    }, []);
 
     const checkLocation = useCallback(async () => {
         setIsLoading(true);
         setError(null);
 
         try {
+            // First check/ensure permission
+            let currentStatus = await getPermissionStatus();
+            setPermissionStatus(currentStatus);
+
+            if (currentStatus !== 'granted') {
+                // If not granted, we can't check location. 
+                // The UI should handle the 'denied' or 'undetermined' state.
+                setIsInPeru(false);
+                return;
+            }
+
             const result = await isUserInPeru();
 
             setLocationData(result);
@@ -52,6 +72,14 @@ export function LocationProvider({ children, checkOnMount = false }: LocationPro
         }
     }, []);
 
+    const requestPermission = useCallback(async () => {
+        const status = await requestLocationPermission();
+        setPermissionStatus(status);
+        if (status === 'granted') {
+            checkLocation();
+        }
+    }, [checkLocation]);
+
     const clearCache = useCallback(() => {
         clearLocationCache();
         setIsInPeru(null);
@@ -61,17 +89,22 @@ export function LocationProvider({ children, checkOnMount = false }: LocationPro
     }, []);
 
     useEffect(() => {
+        checkPermission();
         if (checkOnMount) {
+            // We'll let the permission check drive the location check if needed, 
+            // or just call checkLocation which handles permission check too.
             checkLocation();
         }
-    }, [checkOnMount, checkLocation]);
+    }, [checkOnMount, checkLocation, checkPermission]);
 
     const value: LocationContextValue = {
         isInPeru,
         isLoading,
         error,
         locationData,
+        permissionStatus,
         checkLocation,
+        requestPermission,
         clearCache,
     };
 

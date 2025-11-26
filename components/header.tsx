@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Image, StyleSheet, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/ui/button";
 import { spacing, borderRadius, ThemeColors } from "@/constants/theme";
@@ -54,14 +54,18 @@ export default function Header({ onLoginClick, onRegisterClick }: HeaderProps) {
           {user ? (
             <>
               <View style={styles.balanceContainer}>
-                <Ionicons name="wallet-outline" size={18} color={colors.primary.DEFAULT} />
+                <Ionicons name="wallet-outline" size={16} color={colors.primary.DEFAULT} />
                 <Text style={styles.balanceText}>
                   {loading ? '...' : `S/ ${(balance || 0).toFixed(2)}`}
                 </Text>
               </View>
-              <Button size="sm" onPress={() => router.push("/profile")}>
-                Profile
-              </Button>
+
+              <TouchableOpacity
+                style={styles.profileButton}
+                onPress={() => router.push("/profile")}
+              >
+                <Ionicons name="person" size={18} color={colors.primary.foreground} />
+              </TouchableOpacity>
             </>
           ) : (
             <>
@@ -86,8 +90,8 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.card.DEFAULT,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
+      paddingHorizontal: Platform.OS === 'android' ? spacing.md : spacing.lg,
+      paddingVertical: spacing.sm, // Reduced vertical padding
     },
     content: {
       flexDirection: "row",
@@ -97,36 +101,46 @@ const createStyles = (colors: ThemeColors) =>
     logoContainer: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.md,
+      gap: spacing.sm, // Reduced gap
     },
     logoIcon: {
-      width: 48,
-      height: 48,
+      width: 32, // Smaller logo
+      height: 32,
     },
     logoText: {
-      width: 200,
-      height: 60,
+      width: 120, // Smaller text logo
+      height: 30,
+      display: Platform.OS === 'android' ? 'none' : 'flex', // Hide text on Android/Mobile
     },
     actions: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.sm,
+      gap: spacing.xs, // Tighter gap
     },
     balanceContainer: {
       flexDirection: "row",
       alignItems: "center",
       gap: spacing.xs,
       backgroundColor: colors.muted.DEFAULT,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.sm, // Reduced padding
+      paddingVertical: spacing.xs,
       borderRadius: borderRadius.md,
+      marginRight: spacing.xs,
     },
     balanceText: {
-      fontSize: 14,
+      fontSize: 12, // Smaller font
       fontWeight: "600",
       color: colors.foreground,
     },
     themeButton: {
       padding: spacing.sm,
+    },
+    profileButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.primary.DEFAULT,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
   });

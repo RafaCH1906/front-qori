@@ -259,7 +259,7 @@ export default function BetSlip({
                 onPress={handlePlaceBet}
                 disabled={bets.length === 0 || (!useFreeBet && parseFloat(stake) <= 0) || isPlacing}
               >
-                {isPlacing ? "Procesando..." : "Realizar Apuesta"}
+                <Text>{isPlacing ? "Procesando..." : "Realizar Apuesta"}</Text>
               </Button>
             </View>
           </ScrollView>
