@@ -112,8 +112,8 @@ function IndexScreen() {
   const mobileContentPadding = isLargeScreen
     ? spacing.xl
     : isBetSlipExpanded
-    ? MOBILE_BET_SLIP_MAX_HEIGHT + expandedPortalBottom
-    : MOBILE_BET_SLIP_COLLAPSED_SPACE + spacing.lg;
+      ? MOBILE_BET_SLIP_MAX_HEIGHT + expandedPortalBottom
+      : MOBILE_BET_SLIP_COLLAPSED_SPACE + spacing.lg;
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
