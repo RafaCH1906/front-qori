@@ -133,7 +133,25 @@ export default function AuthModal({
       else if (dni.length !== 8) newErrors.dni = "DNI must be 8 digits";
 
       if (!phone) newErrors.phone = "Phone is required";
-      if (!birthDate) newErrors.birthDate = "Birth date is required";
+      if (!birthDate) {
+        newErrors.birthDate = "Birth date is required";
+      } else {
+        // Validate age - must be 18 or older
+        const today = new Date();
+        const birth = new Date(birthDate);
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+
+        // Adjust age if birthday hasn't occurred this year
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+          age--;
+        }
+
+        if (age < 18) {
+          newErrors.birthDate = "Debes ser mayor de edad para crear una cuenta.";
+        }
+      }
+
 
       if (password !== confirmPassword) {
         newErrors.confirmPassword = "Passwords do not match";
@@ -159,7 +177,9 @@ export default function AuthModal({
         // Show welcome message after modal closes
         // Note: We'll get the actual user name from the auth context after login completes
         setTimeout(() => {
-          showToast(`¡Bienvenido de nuevo!`, "success");
+          // Try to get name from email if not available yet
+          const displayName = firstName || email.split('@')[0];
+          showToast(`¡Bienvenido de nuevo, ${displayName}!`, "success");
         }, 300);
       } else {
         // Construct payload matching backend RegisterRequest
