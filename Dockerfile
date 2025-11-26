@@ -2,22 +2,16 @@ FROM node:18
 
 WORKDIR /app
 
-# Instalar CLI globales necesarias
 RUN npm install -g expo-cli @expo/ngrok@latest concurrently
 
-# Copiar dependencias
 COPY package.json package-lock.json ./
 
-# Instalar dependencias del proyecto
-RUN npm install
+RUN npm install --include=dev
 
-# Copiar el resto del código
 COPY . .
 
-# Exponer puertos
 EXPOSE 3000 8081 19000 19001 19002
 
-# Variables de entorno
 ENV EXPO_PUBLIC_API_URL="https://api.qori.bet/api/v1"
 ENV EXPO_NO_INTERACTIVE=1
 ENV CI=true
