@@ -19,30 +19,63 @@ import {
 } from "@/constants/theme";
 import { Bet } from "@/context/betting-context";
 import { useTheme } from "@/context/theme-context";
+import { useAuth } from "@/context/AuthProvider";
 
 interface BetSlipProps {
   bets: Bet[];
   onRemoveBet: (id: number) => void;
+  onPlaceBet: (stake: number, bets: Bet[], useFreeBet?: boolean) => Promise<void>;
   showHeader?: boolean;
 }
 
 export default function BetSlip({
   bets,
   onRemoveBet,
+  onPlaceBet,
   showHeader = true,
 }: BetSlipProps) {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [stake, setStake] = useState<string>("10");
+  const [isPlacing, setIsPlacing] = useState(false);
+  const [useFreeBet, setUseFreeBet] = useState(false);
 
   const handleQuickAmount = (amount: number) => {
+    if (useFreeBet) return; // Cannot change amount when using free bet
     const currentStake = parseFloat(stake) || 0;
     setStake((currentStake + amount).toString());
   };
 
+  // Determine if it's a simple or combined bet
+  const isCombinedBet = bets.length > 1;
+  const betTypeLabel = isCombinedBet ? "Apuesta Combinada" : "Apuesta Simple";
+
   const totalOdds =
     bets.length > 0 ? bets.reduce((acc, bet) => acc * bet.odds, 1) : 0;
-  const potentialWinnings = parseFloat(stake) * totalOdds;
+
+  // If using free bet, stake is fixed (e.g., 1 free bet unit) or handled by backend
+  // For display, we might show "1 Free Bet" or similar
+  const displayStake = useFreeBet ? 0 : parseFloat(stake);
+  const potentialWinnings = useFreeBet
+    ? totalOdds * 10 // Assuming free bet value is fixed or calculated elsewhere, placeholder
+    : displayStake * totalOdds;
+
+  const handlePlaceBet = async () => {
+    if (bets.length === 0 || (!useFreeBet && parseFloat(stake) <= 0) || isPlacing) return;
+
+    setIsPlacing(true);
+    try {
+      await onPlaceBet(useFreeBet ? 0 : parseFloat(stake), bets, useFreeBet);
+      setStake("10"); // Reset stake after successful bet
+      setUseFreeBet(false);
+    } catch (error) {
+      // Error handled by parent
+      console.error('[BetSlip] Failed to place bet:', error);
+    } finally {
+      setIsPlacing(false);
+    }
+  };
 
   const getTypeLabel = (bet: Bet) => {
     if (bet.label) return bet.label;
@@ -80,120 +113,175 @@ export default function BetSlip({
   };
 
   return (
-    <Card style={styles.card}>
+    <View style={styles.container}>
       {showHeader && (
         <View style={styles.header}>
-          <Text style={styles.headerText}>My Bets</Text>
+          <Text style={styles.headerText}>Mis Apuestas</Text>
         </View>
       )}
 
       {bets.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No bets selected yet</Text>
-          <Text style={styles.emptySubText}>
-            Select odds from matches to add bets
-          </Text>
-        </View>
+        <Card style={styles.card}>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No hay apuestas seleccionadas</Text>
+            <Text style={styles.emptySubText}>
+              Selecciona cuotas de los partidos para agregar apuestas
+            </Text>
+          </View>
+        </Card>
       ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <View style={styles.betsContainer}>
-            {bets.map((bet) => (
-              <View key={bet.id} style={styles.betItem}>
-                <View style={styles.betContent}>
-                  <View
-                    style={[
-                      styles.categoryBadge,
-                      getCategoryBadgeStyle(bet.betType),
-                    ]}
-                  >
-                    <Text style={styles.categoryText}>
-                      {getCategoryLabel(bet.betType)}
+        <Card style={styles.card}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={true}
+          >
+            {/* Bet Type Indicator */}
+            <View style={[
+              styles.betTypeIndicator,
+              isCombinedBet ? styles.combinedBetIndicator : styles.simpleBetIndicator
+            ]}>
+              <Ionicons
+                name={isCombinedBet ? "git-merge-outline" : "document-text-outline"}
+                size={18}
+                color={isCombinedBet ? colors.accent.DEFAULT : colors.primary.DEFAULT}
+              />
+              <Text style={[
+                styles.betTypeText,
+                isCombinedBet ? styles.combinedBetText : styles.simpleBetText
+              ]}>
+                {betTypeLabel}
+              </Text>
+              {isCombinedBet && (
+                <Text style={styles.betTypeDescription}>
+                  (Todas las selecciones deben ganar)
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.betsContainer}>
+              {bets.map((bet) => (
+                <View key={bet.id} style={styles.betItem}>
+                  <View style={styles.betContent}>
+                    <View
+                      style={[
+                        styles.categoryBadge,
+                        getCategoryBadgeStyle(bet.betType),
+                      ]}
+                    >
+                      <Text style={styles.categoryText}>
+                        {getCategoryLabel(bet.betType)}
+                      </Text>
+                    </View>
+                    <Text style={styles.matchText} numberOfLines={1}>
+                      {bet.match}
+                    </Text>
+                    <Text style={styles.betDetailsText}>
+                      {getTypeLabel(bet)} @ {bet.odds.toFixed(2)}
                     </Text>
                   </View>
-                  <Text style={styles.matchText} numberOfLines={1}>
-                    {bet.match}
+                  <TouchableOpacity onPress={() => onRemoveBet(bet.id)}>
+                    <Ionicons
+                      name="close-circle"
+                      size={24}
+                      color={colors.destructive.DEFAULT}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.stakeContainer}>
+              {/* Free Bet Toggle */}
+              {user?.freeBetsCount && user.freeBetsCount > 0 && (
+                <TouchableOpacity
+                  style={[styles.freeBetToggle, useFreeBet && styles.freeBetToggleActive]}
+                  onPress={() => {
+                    setUseFreeBet(!useFreeBet);
+                    if (!useFreeBet) setStake("0"); // Clear stake when using free bet
+                    else setStake("10"); // Restore default
+                  }}
+                >
+                  <Ionicons name="gift" size={20} color={useFreeBet ? colors.primary.foreground : colors.primary.DEFAULT} />
+                  <Text style={[styles.freeBetText, useFreeBet && styles.freeBetTextActive]}>
+                    Usar Apuesta Gratis ({user.freeBetsCount} disponibles)
                   </Text>
-                  <Text style={styles.betDetailsText}>
-                    {getTypeLabel(bet)} @ {bet.odds.toFixed(2)}
+                  {useFreeBet && <Ionicons name="checkmark-circle" size={20} color={colors.primary.foreground} />}
+                </TouchableOpacity>
+              )}
+
+              {!useFreeBet && (
+                <View style={styles.stakeSection}>
+                  <Text style={styles.sectionLabel}>Monto a Apostar (Soles)</Text>
+                  <Input
+                    value={stake}
+                    onChangeText={setStake}
+                    placeholder="Ingresa el monto"
+                    keyboardType="numeric"
+                  />
+
+                  <View style={styles.quickAmountsContainer}>
+                    {[5, 20, 50, 100].map((amount) => (
+                      <TouchableOpacity
+                        key={amount}
+                        onPress={() => handleQuickAmount(amount)}
+                        style={styles.quickAmountButton}
+                      >
+                        <Text style={styles.quickAmountText}>+{amount}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.summaryCard}>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Cuota Total:</Text>
+                  <Text style={styles.summaryValue}>{totalOdds.toFixed(2)}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Monto:</Text>
+                  <Text style={styles.summaryValueNormal}>
+                    {useFreeBet ? "1 Apuesta Gratis" : `S/ ${parseFloat(stake || "0").toFixed(2)}`}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => onRemoveBet(bet.id)}>
-                  <Ionicons
-                    name="close-circle"
-                    size={24}
-                    color={colors.destructive.DEFAULT}
-                  />
-                </TouchableOpacity>
+                <View style={styles.summaryRowFinal}>
+                  <Text style={styles.summaryFinalLabel}>Ganancia Potencial:</Text>
+                  <Text style={styles.summaryFinalValue}>
+                    {useFreeBet ? "Calculado al confirmar" : `S/ ${potentialWinnings.toFixed(2)}`}
+                  </Text>
+                </View>
               </View>
-            ))}
-          </View>
 
-          <View style={styles.stakeContainer}>
-            <View style={styles.stakeSection}>
-              <Text style={styles.sectionLabel}>Stake (Soles)</Text>
-              <Input
-                value={stake}
-                onChangeText={setStake}
-                placeholder="Enter amount"
-                keyboardType="numeric"
-              />
-
-              <View style={styles.quickAmountsContainer}>
-                {[5, 20, 50, 100].map((amount) => (
-                  <TouchableOpacity
-                    key={amount}
-                    onPress={() => handleQuickAmount(amount)}
-                    style={styles.quickAmountButton}
-                  >
-                    <Text style={styles.quickAmountText}>+{amount}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Button
+                variant="secondary"
+                size="lg"
+                onPress={handlePlaceBet}
+                disabled={bets.length === 0 || (!useFreeBet && parseFloat(stake) <= 0) || isPlacing}
+              >
+                <Text>{isPlacing ? "Procesando..." : "Realizar Apuesta"}</Text>
+              </Button>
             </View>
-
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Total Odds:</Text>
-                <Text style={styles.summaryValue}>{totalOdds.toFixed(2)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Stake:</Text>
-                <Text style={styles.summaryValueNormal}>
-                  S/ {parseFloat(stake || "0").toFixed(2)}
-                </Text>
-              </View>
-              <View style={styles.summaryRowFinal}>
-                <Text style={styles.summaryFinalLabel}>Potential Win:</Text>
-                <Text style={styles.summaryFinalValue}>
-                  S/ {potentialWinnings.toFixed(2)}
-                </Text>
-              </View>
-            </View>
-
-            <Button
-              variant="secondary"
-              size="lg"
-              onPress={() => {}}
-              disabled={bets.length === 0 || parseFloat(stake) <= 0}
-            >
-              Place Bet
-            </Button>
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </Card>
       )}
-    </Card>
+    </View>
   );
 }
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    container: {
+      flex: 1,
+      flexDirection: "column",
+      maxHeight: "100%",
+    },
     card: {
+      flex: 1,
       width: "100%",
       backgroundColor: colors.card.DEFAULT,
       borderRadius: borderRadius.lg,
+      maxHeight: "100%",
     },
     header: {
       padding: spacing.lg,
@@ -202,6 +290,7 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.primary.DEFAULT,
       borderTopLeftRadius: borderRadius.lg,
       borderTopRightRadius: borderRadius.lg,
+      marginBottom: spacing.sm,
     },
     headerText: {
       fontSize: fontSize.lg,
@@ -225,10 +314,12 @@ const createStyles = (colors: ThemeColors) =>
       textAlign: "center",
     },
     scrollView: {
-      flexGrow: 1,
+      flex: 1,
+      maxHeight: "100%",
     },
     scrollContent: {
       paddingBottom: spacing.lg,
+      flexGrow: 1,
     },
     betsContainer: {
       padding: spacing.lg,
@@ -348,6 +439,64 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.xl,
       fontWeight: fontWeight.bold,
       color: colors.accent.DEFAULT,
+    },
+    betTypeIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: spacing.md,
+      marginHorizontal: spacing.lg,
+      marginTop: spacing.md,
+      marginBottom: spacing.sm,
+      borderRadius: borderRadius.lg,
+      gap: spacing.sm,
+      borderWidth: 2,
+    },
+    simpleBetIndicator: {
+      backgroundColor: withAlpha(colors.primary.DEFAULT, 0.1),
+      borderColor: withAlpha(colors.primary.DEFAULT, 0.3),
+    },
+    combinedBetIndicator: {
+      backgroundColor: withAlpha(colors.accent.DEFAULT, 0.1),
+      borderColor: withAlpha(colors.accent.DEFAULT, 0.3),
+    },
+    betTypeText: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.bold,
+    },
+    simpleBetText: {
+      color: colors.primary.DEFAULT,
+    },
+    combinedBetText: {
+      color: colors.accent.DEFAULT,
+    },
+    betTypeDescription: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
+      fontStyle: 'italic',
+    },
+    freeBetToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.card.DEFAULT,
+      borderWidth: 1,
+      borderColor: colors.primary.DEFAULT,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    freeBetToggleActive: {
+      backgroundColor: colors.primary.DEFAULT,
+    },
+    freeBetText: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
+      color: colors.primary.DEFAULT,
+      flex: 1,
+      marginLeft: spacing.sm,
+    },
+    freeBetTextActive: {
+      color: colors.primary.foreground,
     },
   });
 

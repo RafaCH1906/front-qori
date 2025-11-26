@@ -3,6 +3,7 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
+  Platform,
   type TouchableOpacityProps,
   type ViewStyle,
   type TextStyle,
@@ -18,12 +19,12 @@ import { useTheme } from "@/context/theme-context";
 
 interface ButtonProps extends TouchableOpacityProps {
   variant?:
-    | "default"
-    | "destructive"
-    | "outline"
-    | "secondary"
-    | "ghost"
-    | "link";
+  | "default"
+  | "destructive"
+  | "outline"
+  | "secondary"
+  | "ghost"
+  | "link";
   size?: "default" | "sm" | "lg";
   children: React.ReactNode;
 }
@@ -70,7 +71,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   text: {
-    fontSize: fontSize.sm,
+    fontSize: Platform.OS === 'android' ? fontSize.base : fontSize.sm, // Larger text on Android
     textAlign: "center",
   },
   disabled: {
@@ -83,19 +84,19 @@ const styles = StyleSheet.create({
 
 const sizeStyles: Record<string, ViewStyle> = {
   default: {
-    height: 40,
+    height: Platform.OS === 'android' ? 44 : 40, // Taller on Android
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
   },
   sm: {
-    height: 36,
+    height: Platform.OS === 'android' ? 40 : 36,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
   },
   lg: {
-    height: 44,
+    height: Platform.OS === 'android' ? 50 : 44, // Taller on Android for better touch target
     paddingHorizontal: spacing.xl,
-    paddingVertical: 10,
+    paddingVertical: Platform.OS === 'android' ? 12 : 10,
   },
 };
 

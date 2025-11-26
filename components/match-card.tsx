@@ -1,8 +1,6 @@
 import React, { useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   spacing,
   borderRadius,
@@ -11,6 +9,7 @@ import {
   ThemeColors,
 } from "@/constants/theme";
 import { useTheme } from "@/context/theme-context";
+import { useBetting } from "@/context/betting-context";
 
 interface MatchCardProps {
   match: {
@@ -30,7 +29,16 @@ export default function MatchCard({
   onOpenMatch,
 }: MatchCardProps) {
   const { colors } = useTheme();
+  const { selectedBets } = useBetting();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  // Check if a specific bet type is selected for this match
+  const isBetSelected = (type: "home" | "draw" | "away") => {
+    return selectedBets.some(
+      (bet) => bet.matchId === match.id && bet.type === type && bet.betType === "result"
+    );
+  };
+
   const handleBet = (type: "home" | "draw" | "away") => {
     onAddBet({
       match: `${match.homeTeam} vs ${match.awayTeam}`,
@@ -61,40 +69,82 @@ export default function MatchCard({
       <View style={styles.oddsContainer}>
         <TouchableOpacity
           onPress={() => handleBet("home")}
-          style={styles.oddsButton}
+          style={[
+            styles.oddsButton,
+            isBetSelected("home") && styles.oddsButtonSelected,
+          ]}
           activeOpacity={0.7}
         >
-          <Text style={styles.oddsLabel}>1</Text>
-          <Text style={styles.oddsValue}>{match.odds.home.toFixed(2)}</Text>
+          <Text
+            style={[
+              styles.oddsLabel,
+              isBetSelected("home") && styles.oddsLabelSelected,
+            ]}
+          >
+            1
+          </Text>
+          <Text
+            style={[
+              styles.oddsValue,
+              isBetSelected("home") && styles.oddsValueSelected,
+            ]}
+          >
+            {match.odds.home.toFixed(2)}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => handleBet("draw")}
-          style={styles.oddsButton}
+          style={[
+            styles.oddsButton,
+            isBetSelected("draw") && styles.oddsButtonSelected,
+          ]}
           activeOpacity={0.7}
         >
-          <Text style={styles.oddsLabel}>X</Text>
-          <Text style={styles.oddsValue}>{match.odds.draw.toFixed(2)}</Text>
+          <Text
+            style={[
+              styles.oddsLabel,
+              isBetSelected("draw") && styles.oddsLabelSelected,
+            ]}
+          >
+            X
+          </Text>
+          <Text
+            style={[
+              styles.oddsValue,
+              isBetSelected("draw") && styles.oddsValueSelected,
+            ]}
+          >
+            {match.odds.draw.toFixed(2)}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => handleBet("away")}
-          style={styles.oddsButton}
+          style={[
+            styles.oddsButton,
+            isBetSelected("away") && styles.oddsButtonSelected,
+          ]}
           activeOpacity={0.7}
         >
-          <Text style={styles.oddsLabel}>2</Text>
-          <Text style={styles.oddsValue}>{match.odds.away.toFixed(2)}</Text>
+          <Text
+            style={[
+              styles.oddsLabel,
+              isBetSelected("away") && styles.oddsLabelSelected,
+            ]}
+          >
+            2
+          </Text>
+          <Text
+            style={[
+              styles.oddsValue,
+              isBetSelected("away") && styles.oddsValueSelected,
+            ]}
+          >
+            {match.odds.away.toFixed(2)}
+          </Text>
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity
-        onPress={onOpenMatch}
-        style={styles.detailsButton}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.detailsText}>Goals, Cards, Corners & Shots</Text>
-        <Ionicons name="chevron-down" size={16} color={colors.accent.DEFAULT} />
-      </TouchableOpacity>
     </Card>
   );
 }
@@ -146,27 +196,24 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: "center",
       backgroundColor: colors.background,
     },
+    oddsButtonSelected: {
+      backgroundColor: "#FDB81E",
+      borderColor: "#FDB81E",
+    },
     oddsLabel: {
       fontSize: fontSize.xs,
       color: colors.muted.foreground,
       marginBottom: 4,
+    },
+    oddsLabelSelected: {
+      color: "#1E293B",
     },
     oddsValue: {
       fontWeight: fontWeight.bold,
       fontSize: fontSize.lg,
       color: colors.primary.DEFAULT,
     },
-    detailsButton: {
-      width: "100%",
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: spacing.sm,
-      paddingVertical: spacing.sm,
-    },
-    detailsText: {
-      fontSize: fontSize.sm,
-      color: colors.accent.DEFAULT,
-      fontWeight: fontWeight.medium,
+    oddsValueSelected: {
+      color: "#1E293B",
     },
   });

@@ -1,3 +1,5 @@
+export type { League } from "@/lib/types";
+
 export const LEAGUES = [
   { id: "la-liga", name: "La Liga", country: "Spain", emoji: "🇪🇸" },
   { id: "liga-1-max", name: "Liga 1 Max", country: "Peru", emoji: "🇵🇪" },

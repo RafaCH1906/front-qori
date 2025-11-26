@@ -1,15 +1,20 @@
 {
   "expo": {
     "name": "QORIBET",
-    "slug": "qoribet-mobile",
+    "slug": "qoribet",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "qoribet",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#10b981"
     },
@@ -19,7 +24,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#10b981"
       },
       "package": "com.qoribet.mobile",
@@ -27,11 +32,27 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "favicon": "./assets/logotipo.png",
+      "bundler": "metro",
+      "template": "./web/index.html"
     },
     "plugins": [
-      "expo-router"
-    ]
+      "expo-router",
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow $(PRODUCT_NAME) to access device motion for shake gestures"
+        }
+      ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "0f4f4f1f-f8c6-4b9b-9f72-c1c0499dd34c"
+      }
+    },
+    "owner": "rafach1906"
   }
 }
