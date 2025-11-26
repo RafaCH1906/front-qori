@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -28,6 +29,8 @@ import { placeBet, PlaceBetRequest } from "@/lib/api/bets";
 import BetConfirmationModal from "@/components/bet-confirmation-modal";
 import { Alert } from "react-native";
 import { shouldUseLargeScreenLayout } from "@/lib/platform-utils";
+import { getMatchById } from "@/lib/api/matches";
+import { MatchDTO } from "@/lib/types";
 
 export default function MatchDetailScreen() {
   const { matchId } = useLocalSearchParams();
@@ -41,29 +44,66 @@ export default function MatchDetailScreen() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [pendingBet, setPendingBet] = useState<{ stake: number, bets: any[] } | null>(null);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
+  const [match, setMatch] = useState<MatchDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isLargeScreen = shouldUseLargeScreenLayout(width);
 
-  // Mock match data - Replace with actual API call
-  const match = {
-    id: parseInt(matchId as string),
-    homeTeam: "Real Madrid",
-    awayTeam: "Barcelona",
-    time: "18:35",
-    league: "La Liga",
-    date: "2025-11-30",
-    odds: { home: 1.85, draw: 3.6, away: 4.2 },
+  useEffect(() => {
+    const fetchMatch = async () => {
+      if (!matchId) {
+        setError("ID de partido no válido");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const matchData = await getMatchById(parseInt(matchId as string));
+        setMatch(matchData);
+      } catch (err: any) {
+        console.error("Failed to fetch match:", err);
+        setError("No se pudo cargar el partido. Por favor, intenta nuevamente.");
+        showToast("Error al cargar el partido", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMatch();
+  }, [matchId]);
+
+  const getMatchTime = () => {
+    if (!match) return "TBD";
+    try {
+      const date = new Date(match.date);
+      return date.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", hour12: false });
+    } catch {
+      return "TBD";
+    }
   };
 
-  // Check if a specific bet type is selected for this match
+  const getMatchDate = () => {
+    if (!match) return "";
+    try {
+      const date = new Date(match.date);
+      return date.toLocaleDateString("es-PE", { year: "numeric", month: "2-digit", day: "2-digit" });
+    } catch {
+      return "";
+    }
+  };
+
   const isBetSelected = (type: "home" | "draw" | "away") => {
+    if (!match) return false;
     return selectedBets.some(
       (bet) => bet.matchId === match.id && bet.type === type && bet.betType === "result"
     );
   };
 
-  // Check if a specific additional bet is selected
   const isAdditionalBetSelected = (category: BetCategoryKey, value: string) => {
+    if (!match) return false;
     return selectedBets.some(
       (bet) =>
         bet.matchId === match.id &&
@@ -73,14 +113,16 @@ export default function MatchDetailScreen() {
   };
 
   const handleBet = (type: "home" | "draw" | "away") => {
+    if (!match) return;
     if (!user) {
       showToast("Por favor, inicia sesión para realizar apuestas", "error");
       return;
     }
+    const defaultOdds = { home: 1.85, draw: 3.6, away: 4.2 };
     addBet({
-      match: `${match.homeTeam} vs ${match.awayTeam}`,
+      match: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
       type,
-      odds: match.odds[type],
+      odds: defaultOdds[type],
       matchId: match.id,
       betType: "result",
     });
@@ -90,12 +132,13 @@ export default function MatchDetailScreen() {
     category: BetCategoryKey,
     option: { label: string; odds: number; value: string }
   ) => {
+    if (!match) return;
     if (!user) {
       showToast("Por favor, inicia sesión para realizar apuestas", "error");
       return;
     }
     addBet({
-      match: `${match.homeTeam} vs ${match.awayTeam}`,
+      match: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
       type: option.value,
       label: `${BET_OPTIONS[category].label}: ${option.label}`,
       odds: option.odds,
@@ -179,6 +222,59 @@ export default function MatchDetailScreen() {
     removeBet(id);
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Detalles del Partido</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
+          <Text style={styles.loadingText}>Cargando partido...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !match) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Detalles del Partido</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color={colors.destructive.DEFAULT} />
+          <Text style={styles.errorText}>{error || "Partido no encontrado"}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.retryButtonText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const defaultOdds = { home: 1.85, draw: 3.6, away: 4.2 };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -199,31 +295,28 @@ export default function MatchDetailScreen() {
           isLargeScreen ? styles.mainRow : styles.mainColumn,
         ]}
       >
-        {/* Match Details Content */}
         <View style={styles.contentWrapper}>
-          {/* Match Info Card */}
           <View style={styles.matchCard}>
             <View style={styles.matchHeader}>
-              <Text style={styles.leagueText}>{match.league}</Text>
-              <Text style={styles.dateText}>{match.date}</Text>
+              <Text style={styles.leagueText}>{match.league.name}</Text>
+              <Text style={styles.dateText}>{getMatchDate()}</Text>
             </View>
 
             <View style={styles.teamsSection}>
               <View style={styles.teamColumn}>
-                <Text style={styles.teamName}>{match.homeTeam}</Text>
+                <Text style={styles.teamName}>{match.homeTeam.name}</Text>
               </View>
               <View style={styles.vsContainer}>
-                <Text style={styles.timeText}>{match.time}</Text>
+                <Text style={styles.timeText}>{getMatchTime()}</Text>
                 <Text style={styles.vsText}>VS</Text>
               </View>
               <View style={styles.teamColumn}>
                 <Text style={[styles.teamName, styles.teamNameRight]}>
-                  {match.awayTeam}
+                  {match.awayTeam.name}
                 </Text>
               </View>
             </View>
 
-            {/* Main Result Bets */}
             <View style={styles.mainBetsSection}>
               <Text style={styles.sectionTitle}>Resultado del Partido</Text>
               <View style={styles.oddsContainer}>
@@ -249,7 +342,7 @@ export default function MatchDetailScreen() {
                       isBetSelected("home") && styles.oddsValueSelected,
                     ]}
                   >
-                    {match.odds.home.toFixed(2)}
+                    {defaultOdds.home.toFixed(2)}
                   </Text>
                 </TouchableOpacity>
 
@@ -275,7 +368,7 @@ export default function MatchDetailScreen() {
                       isBetSelected("draw") && styles.oddsValueSelected,
                     ]}
                   >
-                    {match.odds.draw.toFixed(2)}
+                    {defaultOdds.draw.toFixed(2)}
                   </Text>
                 </TouchableOpacity>
 
@@ -301,14 +394,13 @@ export default function MatchDetailScreen() {
                       isBetSelected("away") && styles.oddsValueSelected,
                     ]}
                   >
-                    {match.odds.away.toFixed(2)}
+                    {defaultOdds.away.toFixed(2)}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
 
-          {/* Additional Betting Options */}
           <View style={styles.additionalBetsSection}>
             <Text style={styles.additionalBetsTitle}>Más Opciones de Apuesta</Text>
             {Object.entries(BET_OPTIONS).map(([key, config]) => (
@@ -357,7 +449,6 @@ export default function MatchDetailScreen() {
           </View>
         </View>
 
-        {/* Bet Slip Sidebar - Always visible on large screens */}
         {isLargeScreen && (
           <View style={styles.betSlipContainer}>
             <BetSlip
@@ -370,7 +461,6 @@ export default function MatchDetailScreen() {
         )}
       </ScrollView>
 
-      {/* Mobile Bet Slip - Fixed at bottom */}
       {!isLargeScreen && selectedBets.length > 0 && (
         <View style={styles.mobileBetSlipContainer}>
           <BetSlip
@@ -382,7 +472,6 @@ export default function MatchDetailScreen() {
         </View>
       )}
 
-      {/* Bet Confirmation Modal */}
       <BetConfirmationModal
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
@@ -424,6 +513,40 @@ const createStyles = (colors: ThemeColors) =>
     },
     placeholder: {
       width: 40,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      gap: spacing.md,
+    },
+    loadingText: {
+      fontSize: fontSize.sm,
+      color: colors.muted.foreground,
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: spacing.xl,
+      gap: spacing.md,
+    },
+    errorText: {
+      fontSize: fontSize.base,
+      color: colors.destructive.DEFAULT,
+      textAlign: "center",
+    },
+    retryButton: {
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+      backgroundColor: colors.primary.DEFAULT,
+      borderRadius: borderRadius.lg,
+      marginTop: spacing.md,
+    },
+    retryButtonText: {
+      fontSize: fontSize.base,
+      fontWeight: fontWeight.semibold,
+      color: colors.primary.foreground,
     },
     mainContainer: {
       flex: 1,

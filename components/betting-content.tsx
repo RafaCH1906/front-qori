@@ -8,7 +8,6 @@ import { getUpcomingMatches, getLeagues, getOdds, getOptions } from "@/lib/api/m
 import { MatchDTO } from "@/lib/types";
 import { Ionicons } from "@expo/vector-icons";
 
-// Define local League interface to match what we use in this component
 interface LocalLeague {
   id: number;
   name: string;
@@ -34,7 +33,6 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  // Guard against state updates after component unmount
   const isMounted = useRef(true);
   useEffect(() => {
     isMounted.current = true;
@@ -74,18 +72,15 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
     };
   }, []);
 
-  // Filter matches by selected league
   const filteredMatches = useMemo(() => {
     if (!selectedLeague) return matches;
     return matches.filter((m) => m.league && m.league.id === selectedLeague);
   }, [matches, selectedLeague]);
 
-  // Reset to page 1 when league selection changes
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedLeague]);
 
-  // Convert MatchDTO to Match format for MatchCard
   const convertedMatches: Match[] = useMemo(() => {
     return filteredMatches.map((m) => ({
       id: m.id,
@@ -93,11 +88,10 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
       homeTeam: m.homeTeam?.name ?? "",
       awayTeam: m.awayTeam?.name ?? "",
       time: formatMatchTime(m.date),
-      odds: { home: 1.85, draw: 3.6, away: 4.2 }, // placeholder odds
+      odds: { home: 1.85, draw: 3.6, away: 4.2 },
     }));
   }, [filteredMatches]);
 
-  // Pagination calculations
   const totalPages = Math.ceil(convertedMatches.length / MATCHES_PER_PAGE);
   const startIndex = (currentPage - 1) * MATCHES_PER_PAGE;
   const endIndex = startIndex + MATCHES_PER_PAGE;
@@ -159,7 +153,6 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
           ))}
         </View>
 
-        {/* Pagination Controls */}
         {totalPages > 1 && (
           <View style={styles.paginationContainer}>
             <TouchableOpacity
@@ -206,7 +199,6 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
   );
 }
 
-// Helper function to format match date/time
 function formatMatchTime(isoDate: string): string {
   try {
     const date = new Date(isoDate);

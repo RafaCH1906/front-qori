@@ -1,5 +1,3 @@
-// TypeScript interfaces matching backend DTOs
-
 export interface TeamDTO {
     id: number;
     name: string;
@@ -19,8 +17,8 @@ export interface MatchDTO {
     homeTeam: TeamDTO;
     awayTeam: TeamDTO;
     league: LeagueDTO;
-    date: string; // Backend uses 'date' not 'matchDate'
-    state: string; // Backend uses 'state' not 'status'
+    date: string;
+    state: string;
     homegoals?: number;
     awaygoals?: number;
     homecards?: number;
@@ -78,7 +76,6 @@ export interface PromotionDTO {
     active: boolean;
 }
 
-// Frontend-specific types for UI
 export interface League {
     id: string;
     name: string;

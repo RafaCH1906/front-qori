@@ -64,10 +64,8 @@ function IndexScreen() {
   const betSlipAnim = useRef(new Animated.Value(0)).current;
   const isLargeScreen = shouldUseLargeScreenLayout(width);
 
-  // Check onboarding status on mount (mobile only)
   useEffect(() => {
     const checkOnboarding = async () => {
-      // Only show onboarding on mobile
       if (Platform.OS === 'web') return;
 
       const hasCompleted = await OnboardingStorage.hasCompletedOnboarding();
@@ -138,7 +136,6 @@ function IndexScreen() {
 
       await placeBet(request);
 
-      // Show success message with bet details
       const betType = pendingBet.bets.length > 1 ? "combinada" : "simple";
       const totalOdds = pendingBet.bets.reduce((acc, bet) => acc * bet.odds, 1);
       const potentialWin = pendingBet.stake * totalOdds;
@@ -155,11 +152,10 @@ function IndexScreen() {
 
       clearBets();
 
-      // Wait a bit for the database transaction to commit before refreshing balance
       console.log('[IndexScreen] Waiting for DB transaction to commit...');
       await new Promise(resolve => setTimeout(resolve, 300));
       console.log('[IndexScreen] Refreshing balance after bet...');
-      await refreshBalance(); // Refresh balance after bet
+      await refreshBalance();
 
       setShowConfirmation(false);
       setPendingBet(null);
