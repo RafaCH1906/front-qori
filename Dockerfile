@@ -3,9 +3,13 @@ FROM node:18
 
 #---- Workspace ----
 WORKDIR /app
+
+
+#---- Instalar dependencias ----
+RUN npm install -g @expo/ngrok@^4.1.0 expo-cli
 #Copiar dependencias
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm installs
 
 #Copiar proyecto
 COPY . .
