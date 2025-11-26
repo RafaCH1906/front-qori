@@ -67,7 +67,7 @@ export default function AuthModal({
   const [selectedDate, setSelectedDate] = useState<Date>(new Date(2000, 0, 1));
 
   const { colors, isDark } = useTheme();
-  const { login, register } = useAuth();
+  const { login, register, user } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -152,11 +152,12 @@ export default function AuthModal({
     try {
       if (mode === "login") {
         console.log('[AUTH MODAL] Attempting login with:', email);
-        const userData = await login({ email: email, password });
+        await login({ email: email, password });
         console.log('[AUTH MODAL] Login successful');
 
         // Show welcome message with user's name
-        const userName = userData?.firstName || "Usuario";
+        // Note: user will be updated by the login function, so we access it from context
+        const userName = user?.firstName || "Usuario";
         showToast(`¡Bienvenido de nuevo, ${userName}!`, "success");
         handleClose();
       } else {
