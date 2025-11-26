@@ -69,7 +69,7 @@ export default function BetHistoryScreen() {
         id: apiBet.id,
         amount: apiBet.totalStake,
         date: apiBet.placedAt,
-        state: apiBet.state || apiBet.status, // Handle potential naming difference
+        state: apiBet.state || apiBet.status,
         betType: apiBet.selections.length > 1 ? "COMBINED" : "SINGLE",
         totalOdds: apiBet.totalOdds,
         selections: apiBet.selections.map((sel: any) => ({
@@ -93,6 +93,7 @@ export default function BetHistoryScreen() {
   };
 
   const onRefresh = async () => {
+
     setRefreshing(true);
     await fetchBets();
     setRefreshing(false);
@@ -101,7 +102,6 @@ export default function BetHistoryScreen() {
   useEffect(() => {
     fetchBets();
 
-    // Auto-refresh every 10 seconds to check for settled bets
     const intervalId = setInterval(() => {
       fetchBets();
     }, 10000);
