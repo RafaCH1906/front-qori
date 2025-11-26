@@ -2,6 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile Web Optimization */
+html {
+  /* Prevent font size adjustment on orientation change */
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+
+  /* Better font rendering on mobile */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  /* Prevent overscroll/bounce effect on mobile */
+  overscroll-behavior: none;
+
+  /* Disable tap highlight on mobile browsers */
+  -webkit-tap-highlight-color: transparent;
+
+  /* Ensure body takes full viewport */
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+}
+
+/* Ensure viewport height works correctly on mobile browsers */
+@supports (-webkit-touch-callout: none) {
+  body {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Prevent zoom on input focus (mobile) */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
 /* Custom Scrollbar Styles */
 * {
   scrollbar-width: thin;

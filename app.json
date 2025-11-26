@@ -33,7 +33,8 @@
     },
     "web": {
       "favicon": "./assets/logotipo.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "template": "./web/index.html"
     },
     "plugins": [
       "expo-router",

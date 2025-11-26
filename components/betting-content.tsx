@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
 import MatchCard from "@/components/match-card";
-import { spacing, fontSize, fontWeight, ThemeColors } from "@/constants/theme";
+import { spacing, fontSize, fontWeight, ThemeColors, borderRadius } from "@/constants/theme";
 import { Match } from "@/constants/matches";
 import { useTheme } from "@/context/theme-context";
 import { getUpcomingMatches, getLeagues, getOdds, getOptions } from "@/lib/api/matches";
 import { MatchDTO } from "@/lib/types";
+import { Ionicons } from "@expo/vector-icons";
 
 // Define local League interface to match what we use in this component
 interface LocalLeague {
@@ -20,6 +21,8 @@ interface BettingContentProps {
   selectedLeague: number | null;
 }
 
+const MATCHES_PER_PAGE = 6;
+
 export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }: BettingContentProps) {
   const [matches, setMatches] = useState<MatchDTO[]>([]);
   const [leagues, setLeagues] = useState<LocalLeague[]>([]);
@@ -27,6 +30,7 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
   const [options, setOptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -76,6 +80,11 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
     return matches.filter((m) => m.league && m.league.id === selectedLeague);
   }, [matches, selectedLeague]);
 
+  // Reset to page 1 when league selection changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedLeague]);
+
   // Convert MatchDTO to Match format for MatchCard
   const convertedMatches: Match[] = useMemo(() => {
     return filteredMatches.map((m) => ({
@@ -87,6 +96,20 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
       odds: { home: 1.85, draw: 3.6, away: 4.2 }, // placeholder odds
     }));
   }, [filteredMatches]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(convertedMatches.length / MATCHES_PER_PAGE);
+  const startIndex = (currentPage - 1) * MATCHES_PER_PAGE;
+  const endIndex = startIndex + MATCHES_PER_PAGE;
+  const paginatedMatches = convertedMatches.slice(startIndex, endIndex);
+
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(1, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(totalPages, prev + 1));
+  };
 
   if (loading) {
     return (
@@ -129,12 +152,55 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
           <Text style={styles.matchCount}>{convertedMatches.length} matches</Text>
         </View>
         <View style={styles.matchesList}>
-          {convertedMatches.map((match) => (
+          {paginatedMatches.map((match) => (
             <View key={match.id} style={styles.matchItem}>
               <MatchCard match={match} onAddBet={onAddBet} onOpenMatch={() => onOpenMatch(match)} />
             </View>
           ))}
         </View>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <View style={styles.paginationContainer}>
+            <TouchableOpacity
+              style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
+              onPress={handlePreviousPage}
+              disabled={currentPage === 1}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={20}
+                color={currentPage === 1 ? colors.muted.foreground : colors.primary.DEFAULT}
+              />
+              <Text style={[styles.paginationButtonText, currentPage === 1 && styles.paginationButtonTextDisabled]}>
+                Anterior
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.paginationInfo}>
+              <Text style={styles.paginationText}>
+                Página {currentPage} de {totalPages}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
+              onPress={handleNextPage}
+              disabled={currentPage === totalPages}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.paginationButtonText, currentPage === totalPages && styles.paginationButtonTextDisabled]}>
+                Siguiente
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={currentPage === totalPages ? colors.muted.foreground : colors.primary.DEFAULT}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -167,4 +233,42 @@ const createStyles = (colors: ThemeColors) =>
     matchCount: { fontSize: fontSize.sm, color: colors.muted.foreground },
     matchesList: { gap: spacing.md },
     matchItem: { marginBottom: spacing.md },
+    paginationContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: spacing.xl,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.sm,
+    },
+    paginationButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card.DEFAULT,
+    },
+    paginationButtonDisabled: {
+      opacity: 0.5,
+    },
+    paginationButtonText: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.medium,
+      color: colors.primary.DEFAULT,
+    },
+    paginationButtonTextDisabled: {
+      color: colors.muted.foreground,
+    },
+    paginationInfo: {
+      paddingHorizontal: spacing.md,
+    },
+    paginationText: {
+      fontSize: fontSize.sm,
+      color: colors.foreground,
+      fontWeight: fontWeight.medium,
+    },
   });

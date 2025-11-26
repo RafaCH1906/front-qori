@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <!--
+      Viewport configuration optimized for mobile devices
+      - width=device-width: Makes the viewport width match the device's width
+      - initial-scale=1: Sets initial zoom level to 100%
+      - maximum-scale=1: Prevents zoom-out beyond 100%
+      - user-scalable=no: Prevents pinch-to-zoom (optional, can be removed if you want zoom)
+      - viewport-fit=cover: For devices with notches (iPhone X, etc.)
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=5, minimum-scale=1, viewport-fit=cover, user-scalable=yes"
+    />
+
+    <!-- Additional mobile optimization meta tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- PWA and theming -->
+    <meta name="theme-color" content="#10b981" />
+    <meta name="apple-mobile-web-app-title" content="QORIBET" />
+
+    <title>QORIBET - Apuestas Deportivas</title>
+
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+        /* Prevent text size adjustment on orientation change */
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        /* Disable tap highlight on mobile */
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        width: 100%;
+        flex: 1;
+      }
+
+      /* Ensure proper box-sizing for all elements */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      Necesitas habilitar JavaScript para ejecutar esta aplicación.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  </body>
+</html>

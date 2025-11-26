@@ -37,6 +37,7 @@ import { useBalance } from "@/context/balance-context";
 import { useToast } from "@/context/toast-context";
 import { placeBet, PlaceBetRequest } from "@/lib/api/bets";
 import BetConfirmationModal from "@/components/bet-confirmation-modal";
+import { shouldUseLargeScreenLayout } from "@/lib/platform-utils";
 
 const DESKTOP_BREAKPOINT = 900;
 const MOBILE_BET_SLIP_MAX_HEIGHT = 420;
@@ -61,7 +62,7 @@ function IndexScreen() {
   const { showToast } = useToast();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const betSlipAnim = useRef(new Animated.Value(0)).current;
-  const isLargeScreen = width >= DESKTOP_BREAKPOINT;
+  const isLargeScreen = shouldUseLargeScreenLayout(width);
 
   // Check onboarding status on mount (mobile only)
   useEffect(() => {
