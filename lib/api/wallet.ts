@@ -15,8 +15,13 @@ export interface DepositRequest {
  * Get user's current balance
  */
 export const getBalance = async (): Promise<BalanceResponse> => {
-    const { data } = await api.get("/wallet/balance");
-    return data;
+    console.log('[wallet.ts] Calling GET /wallet/balance...');
+    const response = await api.get("/wallet/balance");
+    console.log('[wallet.ts] Raw API response:', response);
+    console.log('[wallet.ts] Response data:', response.data);
+    console.log('[wallet.ts] Response data type:', typeof response.data);
+    console.log('[wallet.ts] Balance value:', response.data.balance, 'Type:', typeof response.data.balance);
+    return response.data;
 };
 
 /**

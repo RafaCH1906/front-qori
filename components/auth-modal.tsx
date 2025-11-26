@@ -133,7 +133,25 @@ export default function AuthModal({
       else if (dni.length !== 8) newErrors.dni = "DNI must be 8 digits";
 
       if (!phone) newErrors.phone = "Phone is required";
-      if (!birthDate) newErrors.birthDate = "Birth date is required";
+      if (!birthDate) {
+        newErrors.birthDate = "Birth date is required";
+      } else {
+        // Validate age - must be 18 or older
+        const today = new Date();
+        const birth = new Date(birthDate);
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+
+        // Adjust age if birthday hasn't occurred this year
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+          age--;
+        }
+
+        if (age < 18) {
+          newErrors.birthDate = "Debes ser mayor de edad para crear una cuenta.";
+        }
+      }
+
 
       if (password !== confirmPassword) {
         newErrors.confirmPassword = "Passwords do not match";
@@ -152,14 +170,16 @@ export default function AuthModal({
     try {
       if (mode === "login") {
         console.log('[AUTH MODAL] Attempting login with:', email);
-        await login({ email: email, password });
+        const userData = await login({ email: email, password });
         console.log('[AUTH MODAL] Login successful');
 
-        // Show welcome message with user's name
-        // Note: user will be updated by the login function, so we access it from context
-        const userName = user?.firstName || "Usuario";
-        showToast(`¡Bienvenido de nuevo, ${userName}!`, "success");
         handleClose();
+
+        // Show welcome message after modal closes
+        setTimeout(() => {
+          const displayName = userData?.firstName || "Usuario";
+          showToast(`¡Bienvenido de nuevo, ${displayName}!`, "success");
+        }, 300);
       } else {
         // Construct payload matching backend RegisterRequest
         const payload = {
@@ -175,13 +195,12 @@ export default function AuthModal({
         };
         console.log('[AUTH MODAL] Attempting registration');
         const userData = await register(payload);
+        handleClose();
 
-        // Show email verification message
-        Alert.alert(
-          "¡Registro Exitoso!",
-          "Se ha enviado un correo de verificación a tu email. Por favor, verifica tu correo antes de iniciar sesión.",
-          [{ text: "Entendido", onPress: () => handleClose() }]
-        );
+        // Show success toast with email verification message
+        setTimeout(() => {
+          showToast("✅ Cuenta creada exitosamente. Revise su correo para verificar su cuenta.", "success");
+        }, 300);
 
         // Note: User won't be automatically logged in until they verify their email
         // The backend will reject login attempts for unverified users

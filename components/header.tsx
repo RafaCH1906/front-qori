@@ -17,9 +17,12 @@ interface HeaderProps {
 export default function Header({ onLoginClick, onRegisterClick }: HeaderProps) {
   const { colors, toggleTheme, theme } = useTheme();
   const { user } = useAuth();
-  const { balance, loading } = useBalance();
+  const { balance, loading, freeBetsCount } = useBalance();
   const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  // Debug logging
+  console.log('[Header] Render - User:', user?.username, 'Balance:', balance, 'Loading:', loading, 'FreeBets:', freeBetsCount);
 
   return (
     <View style={styles.container}>
@@ -53,7 +56,7 @@ export default function Header({ onLoginClick, onRegisterClick }: HeaderProps) {
               <View style={styles.balanceContainer}>
                 <Ionicons name="wallet-outline" size={18} color={colors.primary.DEFAULT} />
                 <Text style={styles.balanceText}>
-                  {loading ? '...' : `S/ ${balance.toFixed(2)}`}
+                  {loading ? '...' : `S/ ${(balance || 0).toFixed(2)}`}
                 </Text>
               </View>
               <Button size="sm" onPress={() => router.push("/profile")}>
