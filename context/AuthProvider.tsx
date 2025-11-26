@@ -81,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 lastName: data.user.lastName,
                 phone: data.user.phone,
                 role: data.user.role,
+                freeBetsCount: data.user.freeBetsCount || 0,
             };
 
             console.log('[AuthProvider] Saving user data:', userData);
@@ -112,7 +113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 firstName: payload.firstName || '',
                 lastName: payload.lastName || '',
                 phone: payload.phone || '',
-                role: 'PLAYER'
+                role: 'PLAYER',
+                freeBetsCount: 0,
             };
             return basicUser;
         } catch (error) {

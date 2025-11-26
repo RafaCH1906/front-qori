@@ -51,7 +51,7 @@ function IndexScreen() {
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
   const [isShakeModalOpen, setIsShakeModalOpen] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [pendingBet, setPendingBet] = useState<{ stake: number, bets: any[] } | null>(null);
+  const [pendingBet, setPendingBet] = useState<{ stake: number, bets: any[], useFreeBet?: boolean } | null>(null);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
   const { width } = useWindowDimensions();
   const router = useRouter();
@@ -108,12 +108,12 @@ function IndexScreen() {
     });
   };
 
-  const handlePlaceBet = async (stake: number, bets: any[]) => {
+  const handlePlaceBet = async (stake: number, bets: any[], useFreeBet: boolean = false) => {
     if (!user) {
       showToast("Por favor, inicia sesión para realizar apuestas", "error");
       return;
     }
-    setPendingBet({ stake, bets });
+    setPendingBet({ stake, bets, useFreeBet });
     setShowConfirmation(true);
   };
 
@@ -132,18 +132,21 @@ function IndexScreen() {
         userId: user.id,
         totalStake: pendingBet.stake,
         selections,
+        useFreeBet: pendingBet.useFreeBet,
       };
 
       await placeBet(request);
 
       const betType = pendingBet.bets.length > 1 ? "combinada" : "simple";
       const totalOdds = pendingBet.bets.reduce((acc, bet) => acc * bet.odds, 1);
-      const potentialWin = pendingBet.stake * totalOdds;
+      const potentialWin = pendingBet.useFreeBet
+        ? totalOdds * 10 // Placeholder for free bet value
+        : pendingBet.stake * totalOdds;
 
       Alert.alert(
         "¡Apuesta Realizada con Éxito!",
         `Tu apuesta ${betType} ha sido registrada.\n\n` +
-        `Monto apostado: S/ ${pendingBet.stake.toFixed(2)}\n` +
+        `Monto apostado: ${pendingBet.useFreeBet ? "Apuesta Gratis" : `S/ ${pendingBet.stake.toFixed(2)}`}\n` +
         `Cuota total: ${totalOdds.toFixed(2)}\n` +
         `Ganancia potencial: S/ ${potentialWin.toFixed(2)}\n\n` +
         `¡Buena suerte! 🍀`,
@@ -357,9 +360,14 @@ function IndexScreen() {
         bets={pendingBet?.bets || []}
         stake={pendingBet?.stake || 0}
         totalOdds={pendingBet?.bets.reduce((acc, bet) => acc * bet.odds, 1) || 0}
-        potentialWinnings={(pendingBet?.stake || 0) * (pendingBet?.bets.reduce((acc, bet) => acc * bet.odds, 1) || 0)}
+        potentialWinnings={
+          pendingBet?.useFreeBet
+            ? (pendingBet?.bets.reduce((acc, bet) => acc * bet.odds, 1) || 0) * 10 // Placeholder for free bet value
+            : (pendingBet?.stake || 0) * (pendingBet?.bets.reduce((acc, bet) => acc * bet.odds, 1) || 0)
+        }
         balance={balance}
         isLoading={isPlacingBet}
+        useFreeBet={pendingBet?.useFreeBet}
       />
 
 

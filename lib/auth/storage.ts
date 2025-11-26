@@ -14,6 +14,7 @@ export interface UserData {
     phone?: string;
     role?: string;
     hasReceivedWelcomeGift?: boolean;
+    freeBetsCount?: number;
 }
 
 export class AuthStorage {

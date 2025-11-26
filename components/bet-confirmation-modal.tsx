@@ -30,6 +30,7 @@ interface BetConfirmationModalProps {
     potentialWinnings: number;
     balance: number;
     isLoading?: boolean;
+    useFreeBet?: boolean;
 }
 
 export default function BetConfirmationModal({
@@ -42,11 +43,12 @@ export default function BetConfirmationModal({
     potentialWinnings,
     balance,
     isLoading = false,
+    useFreeBet = false,
 }: BetConfirmationModalProps) {
     const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
 
-    const insufficientBalance = stake > balance;
+    const insufficientBalance = !useFreeBet && stake > balance;
     const isCombinedBet = bets.length > 1;
     const betTypeLabel = isCombinedBet ? "Apuesta Combinada" : "Apuesta Simple";
 
@@ -112,7 +114,9 @@ export default function BetConfirmationModal({
                             </View>
                             <View style={styles.summaryRow}>
                                 <Text style={styles.summaryLabel}>Monto Apostado:</Text>
-                                <Text style={styles.summaryValue}>S/ {stake.toFixed(2)}</Text>
+                                <Text style={styles.summaryValue}>
+                                    {useFreeBet ? "1 Apuesta Gratis" : `S/ ${stake.toFixed(2)}`}
+                                </Text>
                             </View>
                             <View style={styles.summaryRow}>
                                 <Text style={styles.summaryLabel}>Tu Saldo:</Text>
@@ -126,7 +130,7 @@ export default function BetConfirmationModal({
                             <View style={[styles.summaryRow, styles.summaryRowFinal]}>
                                 <Text style={styles.summaryFinalLabel}>Ganancia Potencial:</Text>
                                 <Text style={styles.summaryFinalValue}>
-                                    S/ {potentialWinnings.toFixed(2)}
+                                    {useFreeBet ? "Calculado al confirmar" : `S/ ${potentialWinnings.toFixed(2)}`}
                                 </Text>
                             </View>
                         </View>

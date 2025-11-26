@@ -19,11 +19,12 @@ import {
 } from "@/constants/theme";
 import { Bet } from "@/context/betting-context";
 import { useTheme } from "@/context/theme-context";
+import { useAuth } from "@/context/AuthProvider";
 
 interface BetSlipProps {
   bets: Bet[];
   onRemoveBet: (id: number) => void;
-  onPlaceBet: (stake: number, bets: Bet[]) => Promise<void>;
+  onPlaceBet: (stake: number, bets: Bet[], useFreeBet?: boolean) => Promise<void>;
   showHeader?: boolean;
 }
 
@@ -34,11 +35,14 @@ export default function BetSlip({
   showHeader = true,
 }: BetSlipProps) {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [stake, setStake] = useState<string>("10");
   const [isPlacing, setIsPlacing] = useState(false);
+  const [useFreeBet, setUseFreeBet] = useState(false);
 
   const handleQuickAmount = (amount: number) => {
+    if (useFreeBet) return; // Cannot change amount when using free bet
     const currentStake = parseFloat(stake) || 0;
     setStake((currentStake + amount).toString());
   };
@@ -49,15 +53,22 @@ export default function BetSlip({
 
   const totalOdds =
     bets.length > 0 ? bets.reduce((acc, bet) => acc * bet.odds, 1) : 0;
-  const potentialWinnings = parseFloat(stake) * totalOdds;
+
+  // If using free bet, stake is fixed (e.g., 1 free bet unit) or handled by backend
+  // For display, we might show "1 Free Bet" or similar
+  const displayStake = useFreeBet ? 0 : parseFloat(stake);
+  const potentialWinnings = useFreeBet
+    ? totalOdds * 10 // Assuming free bet value is fixed or calculated elsewhere, placeholder
+    : displayStake * totalOdds;
 
   const handlePlaceBet = async () => {
-    if (bets.length === 0 || parseFloat(stake) <= 0 || isPlacing) return;
+    if (bets.length === 0 || (!useFreeBet && parseFloat(stake) <= 0) || isPlacing) return;
 
     setIsPlacing(true);
     try {
-      await onPlaceBet(parseFloat(stake), bets);
+      await onPlaceBet(useFreeBet ? 0 : parseFloat(stake), bets, useFreeBet);
       setStake("10"); // Reset stake after successful bet
+      setUseFreeBet(false);
     } catch (error) {
       // Error handled by parent
       console.error('[BetSlip] Failed to place bet:', error);
@@ -181,27 +192,47 @@ export default function BetSlip({
             </View>
 
             <View style={styles.stakeContainer}>
-              <View style={styles.stakeSection}>
-                <Text style={styles.sectionLabel}>Monto a Apostar (Soles)</Text>
-                <Input
-                  value={stake}
-                  onChangeText={setStake}
-                  placeholder="Ingresa el monto"
-                  keyboardType="numeric"
-                />
+              {/* Free Bet Toggle */}
+              {user?.freeBetsCount && user.freeBetsCount > 0 && (
+                <TouchableOpacity
+                  style={[styles.freeBetToggle, useFreeBet && styles.freeBetToggleActive]}
+                  onPress={() => {
+                    setUseFreeBet(!useFreeBet);
+                    if (!useFreeBet) setStake("0"); // Clear stake when using free bet
+                    else setStake("10"); // Restore default
+                  }}
+                >
+                  <Ionicons name="gift" size={20} color={useFreeBet ? colors.primary.foreground : colors.primary.DEFAULT} />
+                  <Text style={[styles.freeBetText, useFreeBet && styles.freeBetTextActive]}>
+                    Usar Apuesta Gratis ({user.freeBetsCount} disponibles)
+                  </Text>
+                  {useFreeBet && <Ionicons name="checkmark-circle" size={20} color={colors.primary.foreground} />}
+                </TouchableOpacity>
+              )}
 
-                <View style={styles.quickAmountsContainer}>
-                  {[5, 20, 50, 100].map((amount) => (
-                    <TouchableOpacity
-                      key={amount}
-                      onPress={() => handleQuickAmount(amount)}
-                      style={styles.quickAmountButton}
-                    >
-                      <Text style={styles.quickAmountText}>+{amount}</Text>
-                    </TouchableOpacity>
-                  ))}
+              {!useFreeBet && (
+                <View style={styles.stakeSection}>
+                  <Text style={styles.sectionLabel}>Monto a Apostar (Soles)</Text>
+                  <Input
+                    value={stake}
+                    onChangeText={setStake}
+                    placeholder="Ingresa el monto"
+                    keyboardType="numeric"
+                  />
+
+                  <View style={styles.quickAmountsContainer}>
+                    {[5, 20, 50, 100].map((amount) => (
+                      <TouchableOpacity
+                        key={amount}
+                        onPress={() => handleQuickAmount(amount)}
+                        style={styles.quickAmountButton}
+                      >
+                        <Text style={styles.quickAmountText}>+{amount}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
-              </View>
+              )}
 
               <View style={styles.summaryCard}>
                 <View style={styles.summaryRow}>
@@ -211,13 +242,13 @@ export default function BetSlip({
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Monto:</Text>
                   <Text style={styles.summaryValueNormal}>
-                    S/ {parseFloat(stake || "0").toFixed(2)}
+                    {useFreeBet ? "1 Apuesta Gratis" : `S/ ${parseFloat(stake || "0").toFixed(2)}`}
                   </Text>
                 </View>
                 <View style={styles.summaryRowFinal}>
                   <Text style={styles.summaryFinalLabel}>Ganancia Potencial:</Text>
                   <Text style={styles.summaryFinalValue}>
-                    S/ {potentialWinnings.toFixed(2)}
+                    {useFreeBet ? "Calculado al confirmar" : `S/ ${potentialWinnings.toFixed(2)}`}
                   </Text>
                 </View>
               </View>
@@ -226,7 +257,7 @@ export default function BetSlip({
                 variant="secondary"
                 size="lg"
                 onPress={handlePlaceBet}
-                disabled={bets.length === 0 || parseFloat(stake) <= 0 || isPlacing}
+                disabled={bets.length === 0 || (!useFreeBet && parseFloat(stake) <= 0) || isPlacing}
               >
                 {isPlacing ? "Procesando..." : "Realizar Apuesta"}
               </Button>
@@ -442,6 +473,30 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.xs,
       color: colors.muted.foreground,
       fontStyle: 'italic',
+    },
+    freeBetToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.card.DEFAULT,
+      borderWidth: 1,
+      borderColor: colors.primary.DEFAULT,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    freeBetToggleActive: {
+      backgroundColor: colors.primary.DEFAULT,
+    },
+    freeBetText: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
+      color: colors.primary.DEFAULT,
+      flex: 1,
+      marginLeft: spacing.sm,
+    },
+    freeBetTextActive: {
+      color: colors.primary.foreground,
     },
   });
 

@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/context/theme-context";
 import { AuthProvider } from "@/context/AuthProvider";
 import { ToastProvider } from "@/context/toast-context";
 import { BalanceProvider } from "@/context/balance-context";
+import { LocationProvider } from "@/context/location-context";
 
 export default function RootLayout() {
   return (
@@ -13,22 +14,25 @@ export default function RootLayout() {
       <BalanceProvider>
         <ThemeProvider>
           <ToastProvider>
-            <BettingProvider>
-              <StatusBar style="auto" />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                }}
-              >
-                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                <Stack.Screen name="index" />
-                <Stack.Screen
-                  name="match/[matchId]"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen name="profile" options={{ headerShown: false }} />
-              </Stack>
-            </BettingProvider>
+            <LocationProvider checkOnMount={false}>
+              <BettingProvider>
+                <StatusBar style="auto" />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                  }}
+                >
+                  <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                  <Stack.Screen name="index" />
+                  <Stack.Screen
+                    name="match/[matchId]"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen name="profile" options={{ headerShown: false }} />
+                  <Stack.Screen name="shake-sensor" options={{ headerShown: false }} />
+                </Stack>
+              </BettingProvider>
+            </LocationProvider>
           </ToastProvider>
         </ThemeProvider>
       </BalanceProvider>
