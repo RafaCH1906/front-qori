@@ -51,12 +51,12 @@ export default function ForgotPasswordModal({
         setError("");
 
         if (!email) {
-            setError("Email is required");
+            setError("El correo electrónico es requerido");
             return;
         }
 
         if (!validateEmail(email)) {
-            setError("Please enter a valid email address");
+            setError("Por favor ingresa un correo electrónico válido");
             return;
         }
 
@@ -107,7 +107,7 @@ export default function ForgotPasswordModal({
                         <View style={styles.content}>
                             {/* Header */}
                             <View style={styles.header}>
-                                <Text style={styles.title}>Forgot Password</Text>
+                                <Text style={styles.title}>Olvidé mi Contraseña</Text>
                                 <TouchableOpacity onPress={handleClose}>
                                     <Ionicons
                                         name="close"
@@ -124,14 +124,14 @@ export default function ForgotPasswordModal({
                                         size={64}
                                         color={colors.accent.DEFAULT}
                                     />
-                                    <Text style={styles.successTitle}>Email Sent!</Text>
+                                    <Text style={styles.successTitle}>¡Correo Enviado!</Text>
                                     <Text style={styles.successMessage}>
-                                        We've sent a password reset link to{" "}
+                                        Hemos enviado un enlace de recuperación a{" "}
                                         <Text style={styles.emailText}>{email}</Text>
                                     </Text>
                                     <Text style={styles.successHint}>
-                                        Please check your inbox and follow the instructions to reset your password.
-                                        The link will expire in 60 minutes.
+                                        Por favor revisa tu bandeja de entrada y sigue las instrucciones para restablecer tu contraseña.
+                                        El enlace expirará en 60 minutos.
                                     </Text>
                                     <Button
                                         variant="secondary"
@@ -139,14 +139,14 @@ export default function ForgotPasswordModal({
                                         onPress={handleClose}
                                         style={styles.closeButton}
                                     >
-                                        Close
+                                        Cerrar
                                     </Button>
                                 </View>
                             ) : (
                                 <>
                                     {/* Description */}
                                     <Text style={styles.description}>
-                                        Enter your email address and we'll send you a link to reset your password.
+                                        Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
                                     </Text>
 
                                     {/* Error Message */}
@@ -159,14 +159,14 @@ export default function ForgotPasswordModal({
 
                                     {/* Email Input */}
                                     <View style={styles.inputContainer}>
-                                        <Text style={styles.label}>Email Address</Text>
+                                        <Text style={styles.label}>Email</Text>
                                         <Input
                                             value={email}
                                             onChangeText={(text) => {
                                                 setEmail(text);
                                                 setError("");
                                             }}
-                                            placeholder="your@email.com"
+                                            placeholder="tú@email.com"
                                             keyboardType="email-address"
                                             autoCapitalize="none"
                                             editable={!isLoading}
@@ -184,17 +184,17 @@ export default function ForgotPasswordModal({
                                         {isLoading ? (
                                             <View style={styles.loadingContainer}>
                                                 <ActivityIndicator size="small" color={colors.background} />
-                                                <Text style={styles.loadingText}>Sending...</Text>
+                                                <Text style={styles.loadingText}>Enviando...</Text>
                                             </View>
                                         ) : (
-                                            "Send Reset Link"
+                                            "Enviar Enlace de Recuperación"
                                         )}
                                     </Button>
 
                                     {/* Back to Login */}
                                     <TouchableOpacity onPress={handleClose} style={styles.backButton}>
                                         <Ionicons name="arrow-back" size={16} color={colors.accent.DEFAULT} />
-                                        <Text style={styles.backText}>Back to Login</Text>
+                                        <Text style={styles.backText}>Volver al Inicio de Sesión</Text>
                                     </TouchableOpacity>
                                 </>
                             )}
