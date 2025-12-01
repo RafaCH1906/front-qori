@@ -647,7 +647,7 @@ export default function AuthModal({
                       <Input
                         value={email}
                         onChangeText={(text) => { setEmail(text); if (errors.email) setErrors({ ...errors, email: "" }); }}
-                        placeholder="your@email.com"
+                        placeholder="tú@email.com"
                         keyboardType="email-address"
                         autoCapitalize="none"
                       />
