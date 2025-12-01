@@ -82,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 phone: data.user.phone,
                 role: data.user.role,
                 freeBetsCount: data.user.freeBetsCount || 0,
+                profilePhotoUrl: data.user.profilePhotoUrl,
             };
 
             console.log('[AuthProvider] Saving user data:', userData);
@@ -115,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 phone: payload.phone || '',
                 role: 'PLAYER',
                 freeBetsCount: 0,
+                profilePhotoUrl: undefined,
             };
             return basicUser;
         } catch (error) {
@@ -135,10 +137,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const refreshUser = async () => {
         try {
-            const userData = await AuthStorage.getUserData();
-            setUser(userData);
+            console.log('[AuthProvider] Refreshing user data from backend');
+            const data = await AuthApi.getCurrentUser();
+            
+            if (data && data.user) {
+                const userData: UserData = {
+                    id: data.user.id,
+                    username: data.user.username,
+                    email: data.user.email,
+                    firstName: data.user.firstName,
+                    lastName: data.user.lastName,
+                    phone: data.user.phone,
+                    role: data.user.role,
+                    freeBetsCount: data.user.freeBetsCount || 0,
+                    profilePhotoUrl: data.user.profilePhotoUrl,
+                };
+                
+                await AuthStorage.saveUserData(userData);
+                setUser(userData);
+                console.log('[AuthProvider] User data refreshed successfully');
+            }
         } catch (error) {
-            console.error('Error refreshing user:', error);
+            console.error('[AuthProvider] Error refreshing user:', error);
+            // Si falla, intentar cargar desde storage local
+            try {
+                const userData = await AuthStorage.getUserData();
+                setUser(userData);
+            } catch (storageError) {
+                console.error('[AuthProvider] Error loading user from storage:', storageError);
+            }
         }
     };
 

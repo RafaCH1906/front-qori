@@ -29,3 +29,15 @@ export const refreshToken = async (refreshToken: string) => {
     const { data } = await api.post("/auth/refresh", { refresh: refreshToken });
     return data;
 };
+
+export const getCurrentUser = async () => {
+    try {
+        console.log('[AUTH API] Getting current user profile');
+        const { data } = await api.get("/auth/me");
+        console.log('[AUTH API] Current user profile retrieved');
+        return data;
+    } catch (error: any) {
+        console.error('[AUTH API] Get current user failed:', error.response?.data || error.message);
+        throw error;
+    }
+};

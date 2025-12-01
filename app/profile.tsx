@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,9 +9,10 @@ import { useTheme } from "@/context/theme-context";
 import { useBalance } from "@/context/balance-context";
 import { Ionicons } from "@expo/vector-icons";
 import { spacing, fontSize, fontWeight, borderRadius, ThemeColors } from "@/constants/theme";
+import ProfilePhotoSelector from "@/components/profile-photo-selector";
 
 export default function ProfileScreen() {
-    const { user, logout, loading } = useAuth();
+    const { user, logout, loading, refreshUser } = useAuth();
     const { balance, freeBetsCount } = useBalance();
     const router = useRouter();
     const { colors } = useTheme();
@@ -22,6 +23,12 @@ export default function ProfileScreen() {
             router.replace("/");
         }
     }, [user, loading, router]);
+
+    const handlePhotoUploaded = async (url: string) => {
+        console.log('[Profile] Photo uploaded, refreshing user data');
+        // Refrescar los datos del usuario para obtener la nueva URL
+        await refreshUser();
+    };
 
     if (loading || !user) {
         return (
@@ -47,7 +54,15 @@ export default function ProfileScreen() {
                 <Card style={styles.profileCard}>
                     <View style={styles.avatarContainer}>
                         <View style={styles.avatar}>
-                            <Ionicons name="person" size={48} color={colors.primary.foreground} />
+                            {user.profilePhotoUrl ? (
+                                <Image 
+                                    source={{ uri: user.profilePhotoUrl }} 
+                                    style={styles.avatarImage}
+                                    resizeMode="cover"
+                                />
+                            ) : (
+                                <Ionicons name="person" size={48} color={colors.primary.foreground} />
+                            )}
                         </View>
                         <Text style={styles.userName}>
                             {user.firstName} {user.lastName}
@@ -55,6 +70,9 @@ export default function ProfileScreen() {
                         <Text style={styles.userEmail}>{user.email}</Text>
                     </View>
                 </Card>
+
+                {/* Profile Photo Selector */}
+                <ProfilePhotoSelector onPhotoUploaded={handlePhotoUploaded} />
 
                 {/* Balance Card */}
                 <Card style={styles.balanceCard}>
@@ -165,6 +183,11 @@ const createStyles = (colors: ThemeColors) =>
             alignItems: "center",
             justifyContent: "center",
             marginBottom: spacing.sm,
+            overflow: 'hidden',
+        },
+        avatarImage: {
+            width: '100%',
+            height: '100%',
         },
         userName: {
             fontSize: fontSize.xl,

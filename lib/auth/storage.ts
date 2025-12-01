@@ -15,6 +15,7 @@ export interface UserData {
     role?: string;
     hasReceivedWelcomeGift?: boolean;
     freeBetsCount?: number;
+    profilePhotoUrl?: string;
 }
 
 export class AuthStorage {

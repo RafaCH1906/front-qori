@@ -27,13 +27,8 @@ export default function Header({ onLoginClick, onRegisterClick }: HeaderProps) {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {/* Logo */}
+        {/* Logo (Left Side) */}
         <TouchableOpacity onPress={() => router.push("/")} style={styles.logoContainer}>
-          <Image
-            source={require("@/assets/logotipo.png")}
-            style={styles.logoIcon}
-            resizeMode="contain"
-          />
           <Image
             source={require("@/assets/logo.png")}
             style={styles.logoText}
@@ -96,21 +91,20 @@ const createStyles = (colors: ThemeColors) =>
     content: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "space-between", // Logo Left, Actions Right
     },
     logoContainer: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.sm, // Reduced gap
+      gap: spacing.sm,
     },
     logoIcon: {
-      width: 32, // Smaller logo
-      height: 32,
+      width: 1024, // Smaller logo
+      height: 1024,
     },
     logoText: {
-      width: 120, // Smaller text logo
-      height: 30,
-      display: Platform.OS === 'android' ? 'none' : 'flex', // Hide text on Android/Mobile
+      width: 240, // Increased size
+      height: 100,
     },
     actions: {
       flexDirection: "row",

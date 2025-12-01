@@ -1,3 +1,5 @@
+// Validation utilities for QORIBET
+
 export interface ValidationResult {
     isValid: boolean;
     error?: string;
@@ -54,6 +56,14 @@ export function toE164Format(phone: string): string {
     return `+51${phoneDigits}`;
 }
 
+export function getCurrentPeruDate(): Date {
+    // Peru is UTC-5 (no daylight saving)
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const peruTime = new Date(utc + (3600000 * -5));
+    return peruTime;
+}
+
 export function calculateAge(birthDate: string, referenceDate?: Date): number {
     const birth = new Date(birthDate);
     const today = referenceDate || getCurrentPeruDate();
@@ -67,14 +77,6 @@ export function calculateAge(birthDate: string, referenceDate?: Date): number {
     }
 
     return age;
-}
-
-export function getCurrentPeruDate(): Date {
-    // Peru is UTC-5 (no daylight saving)
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const peruTime = new Date(utc + (3600000 * -5));
-    return peruTime;
 }
 
 export function validateAge(
@@ -104,6 +106,7 @@ export function validateAge(
 
     return { isValid: true };
 }
+
 export function isValidDate(dateString: string): ValidationResult {
     if (!dateString) {
         return { isValid: false, error: "La fecha es obligatoria" };
@@ -143,3 +146,19 @@ export function logValidationAttempt(
 
     console.log('[ValidationLog]', JSON.stringify(logEntry));
 }
+
+// Password Validation Helper
+export const validatePassword = (password: string) => {
+    return {
+        length: password.length >= 8,
+        upper: /[A-Z]/.test(password),
+        lower: /[a-z]/.test(password),
+        number: /\d/.test(password),
+        special: /[@$!%*?&]/.test(password),
+        isValid: password.length >= 8 &&
+            /[A-Z]/.test(password) &&
+            /[a-z]/.test(password) &&
+            /\d/.test(password) &&
+            /[@$!%*?&]/.test(password)
+    };
+};
