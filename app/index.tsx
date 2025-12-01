@@ -8,7 +8,6 @@ import {
   useWindowDimensions,
   Animated,
   Platform,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -122,10 +121,10 @@ function IndexScreen() {
 
     setIsPlacingBet(true);
     try {
-      // Map bets to selections with optionId
+      // Map bets to selections with optionId and oddsTaken (backend expects oddsTaken)
       const selections = pendingBet.bets.map(bet => ({
         optionId: bet.id, // Assuming bet.id is the optionId from the backend
-        odds: bet.odds,
+        oddsTaken: bet.odds, // Backend expects oddsTaken instead of odds
       }));
 
       const request: PlaceBetRequest = {
@@ -135,7 +134,7 @@ function IndexScreen() {
         useFreeBet: pendingBet.useFreeBet,
       };
 
-      await placeBet(request);
+      const response = await placeBet(request);
 
       const betType = pendingBet.bets.length > 1 ? "combinada" : "simple";
       const totalOdds = pendingBet.bets.reduce((acc, bet) => acc * bet.odds, 1);
@@ -143,25 +142,28 @@ function IndexScreen() {
         ? totalOdds * 10 // Placeholder for free bet value
         : pendingBet.stake * totalOdds;
 
-      Alert.alert(
-        "¡Apuesta Realizada con Éxito!",
-        `Tu apuesta ${betType} ha sido registrada.\n\n` +
-        `Monto apostado: ${pendingBet.useFreeBet ? "Apuesta Gratis" : `S/ ${pendingBet.stake.toFixed(2)}`}\n` +
-        `Cuota total: ${totalOdds.toFixed(2)}\n` +
-        `Ganancia potencial: S/ ${potentialWin.toFixed(2)}\n\n` +
-        `¡Buena suerte! 🍀`,
-        [{ text: "Entendido" }]
-      );
-
+      // Clear bets from slip
       clearBets();
 
+      // Close confirmation modal
+      setShowConfirmation(false);
+      setPendingBet(null);
+
+      // Wait for backend transaction to complete before refreshing balance
       console.log('[IndexScreen] Waiting for DB transaction to commit...');
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       console.log('[IndexScreen] Refreshing balance after bet...');
       await refreshBalance();
 
-      setShowConfirmation(false);
-      setPendingBet(null);
+      // Show success toast notification
+      showToast(
+        `¡Apuesta ${betType} realizada con éxito! 🍀\n` +
+        `Monto: ${pendingBet.useFreeBet ? "Apuesta Gratis" : `S/ ${pendingBet.stake.toFixed(2)}`} | ` +
+        `Cuota: ${totalOdds.toFixed(2)} | ` +
+        `Ganancia potencial: S/ ${potentialWin.toFixed(2)}`,
+        "success"
+      );
+
     } catch (error: any) {
       let errorMessage = "Error al realizar la apuesta. Por favor, intenta nuevamente.";
 
@@ -179,7 +181,7 @@ function IndexScreen() {
         }
       }
 
-      Alert.alert("Error al Realizar Apuesta", errorMessage, [{ text: "OK" }]);
+      showToast(errorMessage, "error");
       console.error('[IndexScreen] Failed to place bet:', error);
     } finally {
       setIsPlacingBet(false);

@@ -2,7 +2,7 @@ import api from "./axios";
 
 export interface BetSelection {
     optionId: number;
-    odds: number;
+    oddsTaken: number; // Backend expects oddsTaken as BigDecimal
 }
 
 export interface PlaceBetRequest {

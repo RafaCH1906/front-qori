@@ -27,7 +27,6 @@ import { useBalance } from "@/context/balance-context";
 import { useToast } from "@/context/toast-context";
 import { placeBet, PlaceBetRequest } from "@/lib/api/bets";
 import BetConfirmationModal from "@/components/bet-confirmation-modal";
-import { Alert } from "react-native";
 import { shouldUseLargeScreenLayout } from "@/lib/platform-utils";
 import { getMatchById } from "@/lib/api/matches";
 import { MatchDTO } from "@/lib/types";
@@ -163,7 +162,7 @@ export default function MatchDetailScreen() {
     try {
       const selections = pendingBet.bets.map(bet => ({
         optionId: bet.id,
-        odds: bet.odds,
+        oddsTaken: bet.odds, // Backend expects oddsTaken instead of odds
       }));
 
       const request: PlaceBetRequest = {
@@ -172,28 +171,32 @@ export default function MatchDetailScreen() {
         selections,
       };
 
-      await placeBet(request);
+      const response = await placeBet(request);
 
       const betType = pendingBet.bets.length > 1 ? "combinada" : "simple";
       const totalOdds = pendingBet.bets.reduce((acc, bet) => acc * bet.odds, 1);
       const potentialWin = pendingBet.stake * totalOdds;
 
-      Alert.alert(
-        "¡Apuesta Realizada con Éxito!",
-        `Tu apuesta ${betType} ha sido registrada.\n\n` +
-        `Monto apostado: S/ ${pendingBet.stake.toFixed(2)}\n` +
-        `Cuota total: ${totalOdds.toFixed(2)}\n` +
-        `Ganancia potencial: S/ ${potentialWin.toFixed(2)}\n\n` +
-        `¡Buena suerte! 🍀`,
-        [{ text: "Entendido" }]
-      );
-
+      // Clear bets from slip
       clearBets();
-      await new Promise(resolve => setTimeout(resolve, 300));
-      await refreshBalance();
 
+      // Close confirmation modal
       setShowConfirmation(false);
       setPendingBet(null);
+
+      // Wait for backend transaction to complete before refreshing balance
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await refreshBalance();
+
+      // Show success toast notification
+      showToast(
+        `¡Apuesta ${betType} realizada con éxito! 🍀\n` +
+        `Monto: S/ ${pendingBet.stake.toFixed(2)} | ` +
+        `Cuota: ${totalOdds.toFixed(2)} | ` +
+        `Ganancia potencial: S/ ${potentialWin.toFixed(2)}`,
+        "success"
+      );
+
     } catch (error: any) {
       let errorMessage = "Error al realizar la apuesta. Por favor, intenta nuevamente.";
 
@@ -211,7 +214,7 @@ export default function MatchDetailScreen() {
         }
       }
 
-      Alert.alert("Error al Realizar Apuesta", errorMessage, [{ text: "OK" }]);
+      showToast(errorMessage, "error");
       console.error('[MatchDetailScreen] Failed to place bet:', error);
     } finally {
       setIsPlacingBet(false);

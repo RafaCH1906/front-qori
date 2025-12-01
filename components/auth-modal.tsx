@@ -27,7 +27,13 @@ import { useTheme } from "@/context/theme-context";
 import { useAuth } from "@/context/AuthProvider";
 import { useToast } from "@/context/toast-context";
 import { useRouter } from "expo-router";
-
+import { useLocation } from "@/context/location-context";
+import {
+  validatePeruvianPhone,
+  formatPeruvianPhone,
+  toE164Format,
+  logValidationAttempt
+} from "@/lib/utils/validation-utils";
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -70,6 +76,7 @@ export default function AuthModal({
   const { login, register, user } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
+  const { isInPeru, isLoading: locationLoading, permissionStatus, requestPermission } = useLocation();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Reset form when modal closes or mode changes
@@ -132,7 +139,13 @@ export default function AuthModal({
       if (!dni) newErrors.dni = "DNI is required";
       else if (dni.length !== 8) newErrors.dni = "DNI must be 8 digits";
 
-      if (!phone) newErrors.phone = "Phone is required";
+      const phoneValidation = validatePeruvianPhone(phone);
+      if (!phoneValidation.isValid) {
+        newErrors.phone = phoneValidation.error || "Invalid phone number";
+        logValidationAttempt('phone', false, { phone: phone.replace(/\d/g, 'X') });
+      } else {
+        logValidationAttempt('phone', true);
+      }
       if (!birthDate) {
         newErrors.birthDate = "Birth date is required";
       } else {
@@ -164,6 +177,67 @@ export default function AuthModal({
 
   const handleSubmit = async () => {
     setGeneralError("");
+
+    // LOCATION VALIDATION - Peru only
+    if (permissionStatus === 'denied') {
+      Alert.alert(
+        "Ubicación Requerida",
+        "Necesitamos acceso a tu ubicación para verificar que estás en Perú. Este servicio está disponible únicamente en Perú.\n\nPor favor, habilita los permisos de ubicación en la configuración de tu dispositivo.",
+        [
+          { text: "Ir a Configuración", onPress: () => requestPermission() },
+          { text: "Cancelar", style: "cancel" }
+        ]
+      );
+      logValidationAttempt('location', false, { reason: 'permission_denied' });
+      return;
+    }
+
+    if (permissionStatus === 'undetermined') {
+      Alert.alert(
+        "Ubicación Requerida",
+        "Para usar QORIBET debes permitir el acceso a tu ubicación. Esto nos permite verificar que te encuentras en Perú.",
+        [
+          {
+            text: "Permitir", onPress: async () => {
+              await requestPermission();
+            }
+          },
+          { text: "Cancelar", style: "cancel" }
+        ]
+      );
+      return;
+    }
+
+    if (locationLoading) {
+      showToast("Verificando ubicación...", "info");
+      return;
+    }
+
+    if (isInPeru === false) {
+      Alert.alert(
+        "Servicio No Disponible",
+        "Lo sentimos, QORIBET está disponible únicamente en Perú. Tu ubicación actual indica que no te encuentras en el territorio peruano.",
+        [{ text: "Entendido" }]
+      );
+      logValidationAttempt('location', false, { reason: 'outside_peru', mode });
+      return;
+    }
+
+    if (isInPeru === null) {
+      Alert.alert(
+        "Error de Ubicación",
+        "No pudimos verificar tu ubicación. Por favor, asegúrate de tener GPS activado e internet disponible.",
+        [{
+          text: "Reintentar", onPress: async () => {
+            await requestPermission();
+          }
+        },
+        { text: "Cancelar", style: "cancel" }]
+      );
+      return;
+    }
+
+    // Location validated - now validate form
     if (!validateForm()) return;
 
     setIsLoading(true);
@@ -182,13 +256,15 @@ export default function AuthModal({
         }, 300);
       } else {
         // Construct payload matching backend RegisterRequest
+        const formattedPhone = toE164Format(phone);
+
         const payload = {
           username: email,
           email,
           password,
           firstName,
           lastName,
-          phone,
+          phone: formattedPhone,
           dni,
           birthDate,
           address: "Default Address",
@@ -338,7 +414,7 @@ export default function AuthModal({
                         <Input
                           value={dni}
                           onChangeText={(text) => { setDni(text); if (errors.dni) setErrors({ ...errors, dni: "" }); }}
-                          placeholder="12345678"
+                          placeholder="Numero de DNI"
                           keyboardType="numeric"
                           maxLength={8}
                         />
@@ -346,13 +422,22 @@ export default function AuthModal({
                       </View>
 
                       <View>
-                        <Text style={styles.label}>Phone</Text>
+                        <Text style={styles.label}>Teléfono (9 dígitos)</Text>
                         <Input
-                          value={phone}
-                          onChangeText={(text) => { setPhone(text); if (errors.phone) setErrors({ ...errors, phone: "" }); }}
-                          placeholder="+51 999 999 999"
+                          value={formatPeruvianPhone(phone)}
+                          onChangeText={(text) => {
+                            const digitsOnly = text.replace(/\D/g, '');
+                            const limited = digitsOnly.slice(0, 9);
+                            setPhone(limited);
+                            if (errors.phone) setErrors({ ...errors, phone: "" });
+                          }}
+                          placeholder="987 654 321"
                           keyboardType="phone-pad"
+                          maxLength={11}
                         />
+                        <Text style={[styles.errorText, { color: colors.muted.foreground, marginTop: 4 }]}>
+                          Número móvil peruano (debe comenzar con 9)
+                        </Text>
                         {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
                       </View>
 
