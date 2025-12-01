@@ -65,11 +65,11 @@ export default function Header({ onLoginClick, onRegisterClick }: HeaderProps) {
           ) : (
             <>
               <Button variant="outline" size="sm" onPress={onLoginClick}>
-                Login
+                Acceder
               </Button>
 
               <Button size="sm" onPress={onRegisterClick}>
-                Register
+                Regístrate
               </Button>
             </>
           )}
@@ -103,8 +103,8 @@ const createStyles = (colors: ThemeColors) =>
       height: 1024,
     },
     logoText: {
-      width: 240, // Increased size
-      height: 100,
+      width: 96, // 60% smaller (40% of original 240)
+      height: 40, // 60% smaller (40% of original 100)
     },
     actions: {
       flexDirection: "row",

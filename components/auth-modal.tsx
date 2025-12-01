@@ -30,7 +30,6 @@ import { useRouter } from "expo-router";
 import { useLocation } from "@/context/location-context";
 import {
   validatePeruvianPhone,
-  formatPeruvianPhone,
   toE164Format,
   logValidationAttempt,
   validateAge,
@@ -83,7 +82,12 @@ export default function AuthModal({
 
   // Date picker state
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date(2000, 0, 1));
+  // Default date: 18 years ago from today
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - 18);
+    return date;
+  });
 
   const { colors, isDark } = useTheme();
   const { login, register, user } = useAuth();
@@ -479,29 +483,39 @@ export default function AuthModal({
                         </View>
 
                         <View>
-                          <Text style={styles.label}>Teléfono (9 dígitos)</Text>
+                          <Text style={styles.label}>Teléfono</Text>
                           <View style={styles.validationInputContainer}>
                             <Input
-                              value={formatPeruvianPhone(phone)}
+                              value={phone}
                               onChangeText={(text) => {
+                                // Remove all non-digit characters
                                 const digitsOnly = text.replace(/\D/g, '');
+                                // Limit to 9 digits
                                 const limited = digitsOnly.slice(0, 9);
+                                // Store only digits (no formatting)
                                 setPhone(limited);
+
+                                // Clear previous errors
                                 if (errors.phone) setErrors({ ...errors, phone: "" });
-                                
+
                                 // Real-time validation feedback
                                 if (limited.length === 0) {
                                   setPhoneValidationState('idle');
                                 } else if (limited.length === 9) {
                                   const validation = validatePeruvianPhone(limited);
                                   setPhoneValidationState(validation.isValid ? 'valid' : 'invalid');
+
+                                  // Show error if doesn't start with 9
+                                  if (!validation.isValid && !limited.startsWith('9')) {
+                                    setErrors({ ...errors, phone: "Lo sentimos, el servicio solo es para números móviles de Perú" });
+                                  }
                                 } else {
                                   setPhoneValidationState('invalid');
                                 }
                               }}
-                              placeholder="987 654 321"
+                              placeholder="999999999"
                               keyboardType="phone-pad"
-                              maxLength={11}
+                              maxLength={9}
                             />
                             {phoneValidationState === 'valid' && (
                               <View style={styles.validationIcon}>
@@ -514,9 +528,6 @@ export default function AuthModal({
                               </View>
                             )}
                           </View>
-                          <Text style={[styles.hintText, { color: colors.muted.foreground }]}>
-                            📱 Número móvil peruano (debe comenzar con 9)
-                          </Text>
                           {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
                         </View>
 
@@ -532,7 +543,7 @@ export default function AuthModal({
                                   const value = e.target.value;
                                   setBirthDate(value);
                                   if (errors.birthDate) setErrors({ ...errors, birthDate: "" });
-                                  
+
                                   // Real-time age validation
                                   if (value) {
                                     const ageValidation = validateAge(value, 18, 70);
@@ -541,8 +552,16 @@ export default function AuthModal({
                                     setAgeValidationState('idle');
                                   }
                                 }}
-                                max={new Date().toISOString().split('T')[0]}
-                                min="1900-01-01"
+                                max={(() => {
+                                  const maxDate = new Date();
+                                  maxDate.setFullYear(maxDate.getFullYear() - 18);
+                                  return maxDate.toISOString().split('T')[0];
+                                })()}
+                                min={(() => {
+                                  const minDate = new Date();
+                                  minDate.setFullYear(minDate.getFullYear() - 70);
+                                  return minDate.toISOString().split('T')[0];
+                                })()}
                                 placeholder="DD/MM/AAAA"
                                 style={{
                                   width: '100%',
@@ -598,8 +617,16 @@ export default function AuthModal({
                                   mode="date"
                                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                                   onChange={handleDateChange}
-                                  maximumDate={new Date()}
-                                  minimumDate={new Date(1900, 0, 1)}
+                                  maximumDate={(() => {
+                                    const maxDate = new Date();
+                                    maxDate.setFullYear(maxDate.getFullYear() - 18);
+                                    return maxDate;
+                                  })()}
+                                  minimumDate={(() => {
+                                    const minDate = new Date();
+                                    minDate.setFullYear(minDate.getFullYear() - 70);
+                                    return minDate;
+                                  })()}
                                   themeVariant={isDark ? 'dark' : 'light'}
                                 />
                               )}
