@@ -42,7 +42,7 @@ export default function BetHistorySummary({ maxBets = 3 }: BetHistorySummaryProp
         const fetchRecentBets = async () => {
             try {
                 setLoading(true);
-                const bets = await getBetHistory(user.id);
+                const bets = await getBetHistory();
                 setRecentBets(bets.slice(0, maxBets));
             } catch (error) {
                 console.error('Failed to fetch recent bets:', error);

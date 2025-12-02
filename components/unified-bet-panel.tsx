@@ -8,7 +8,7 @@ import RecentBetsPanel from "./recent-bets-panel";
 interface UnifiedBetPanelProps {
   bets: any[];
   onRemoveBet: (matchId: number, betType?: string) => void;
-  onPlaceBet: (stake: number, bets: any[], useFreeBet?: boolean) => void;
+  onPlaceBet: (stake: number, bets: any[], useFreeBet?: boolean) => Promise<void> | void;
 }
 
 type TabType = "create" | "history";
@@ -17,6 +17,11 @@ export default function UnifiedBetPanel({ bets, onRemoveBet, onPlaceBet }: Unifi
   const { colors } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>("create");
   const styles = createStyles(colors);
+
+  // Wrap onPlaceBet to ensure it always returns a Promise
+  const handlePlaceBet = async (stake: number, bets: any[], useFreeBet?: boolean) => {
+    await Promise.resolve(onPlaceBet(stake, bets, useFreeBet));
+  };
 
   return (
     <View style={styles.container}>
@@ -54,7 +59,7 @@ export default function UnifiedBetPanel({ bets, onRemoveBet, onPlaceBet }: Unifi
           <BetSlip
             bets={bets}
             onRemoveBet={onRemoveBet}
-            onPlaceBet={onPlaceBet}
+            onPlaceBet={handlePlaceBet}
             showHeader={false}
           />
         ) : (
