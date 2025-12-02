@@ -87,10 +87,10 @@ export default function ShakeSensorScreen() {
             </View>
 
             {/* Peru-only content */}
-            <PeruOnlyGuard
+            {/* <PeruOnlyGuard
                 loadingMessage="Verificando ubicación para activar sensor..."
                 deniedMessage="El sensor de movimiento solo está disponible en Perú"
-            >
+            > */}
                 <View style={styles.content}>
                     {/* Status Card */}
                     <Card style={[styles.statusCard, { backgroundColor: colors.card.DEFAULT }]}>
@@ -187,7 +187,7 @@ export default function ShakeSensorScreen() {
                         </View>
                     )}
                 </View>
-            </PeruOnlyGuard>
+            {/* </PeruOnlyGuard> */}
         </SafeAreaView>
     );
 }
