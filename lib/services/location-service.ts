@@ -8,7 +8,7 @@ let locationCache: {
     coordinates: { latitude: number; longitude: number } | null;
 } | null = null;
 
-const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
+const CACHE_DURATION = 1000 * 60 * 15; // 15 minutes (reduced for security)
 const PERU_COUNTRY_CODE = 'PE';
 
 export interface LocationResult {

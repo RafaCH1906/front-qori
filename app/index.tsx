@@ -40,6 +40,7 @@ import { MobileLayout } from "@/components/layouts/mobile-layout";
 import { TabletLayout } from "@/components/layouts/tablet-layout";
 import { DesktopLayout } from "@/components/layouts/desktop-layout";
 import UnifiedBetPanel from "@/components/unified-bet-panel";
+import { PeruOnlyGuard } from "@/components/peru-only-guard";
 
 const MOBILE_BET_SLIP_MAX_HEIGHT = 420;
 const MOBILE_BET_SLIP_COLLAPSED_SPACE = 140;
@@ -294,7 +295,12 @@ function IndexScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <PeruOnlyGuard
+      loadingMessage="Verificando tu ubicación..."
+      deniedMessage="QORIBET solo está disponible en Perú"
+      showRetry={true}
+    >
+      <SafeAreaView style={styles.safeArea}>
       <Header
         onLoginClick={() => handleAuthOpen("login")}
         onRegisterClick={() => handleAuthOpen("register")}
@@ -408,6 +414,7 @@ function IndexScreen() {
         </TouchableOpacity>
       )}
     </SafeAreaView>
+    </PeruOnlyGuard>
   );
 }
 

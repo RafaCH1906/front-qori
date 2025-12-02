@@ -355,7 +355,7 @@ export default function MatchDetailScreen() {
             <Text style={styles.retryButtonText}>Volver</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+        </SafeAreaView>
     );
   }
 
@@ -642,7 +642,7 @@ export default function MatchDetailScreen() {
         isLoading={isPlacingBet}
       />
     </SafeAreaView>
-  );
+  );  
 }
 
 const createStyles = (colors: ThemeColors) =>

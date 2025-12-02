@@ -62,6 +62,15 @@ export function LocationProvider({ children, checkOnMount = true }: LocationProv
                 country: result.countryCode,
                 error: result.error,
             });
+
+            // Log warning if user is outside Peru
+            if (!result.isInPeru && result.countryCode) {
+                console.warn('[LocationContext] ⚠️ ACCESS ATTEMPT FROM OUTSIDE PERU:', {
+                    country: result.countryCode,
+                    coordinates: result.coordinates,
+                    timestamp: new Date().toISOString()
+                });
+            }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
             setError(errorMessage);
