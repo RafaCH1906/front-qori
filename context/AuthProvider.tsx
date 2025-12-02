@@ -7,7 +7,7 @@ type AuthContextType = {
     loading: boolean;
     isAuthenticated: boolean;
     login: (payload: { username?: string; email?: string; password: string }) => Promise<UserData>;
-    register: (payload: any) => Promise<UserData>;
+    register: (payload: any) => Promise<{ success: boolean; message: string; email: string }>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
 };
@@ -95,30 +95,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const register = async (payload: any): Promise<UserData> => {
+    const register = async (payload: any): Promise<{ success: boolean; message: string; email: string }> => {
         try {
             const data = await AuthApi.register(payload);
-            // After registration, save user data if provided
-            if (data.accessToken && data.user) {
-                await AuthStorage.saveToken(data.accessToken);
-                await AuthStorage.saveUserData(data.user);
-                setUser(data.user);
-                return data.user;
-            }
-            // If no user data returned, still return a basic user object
-            // This can happen if backend only returns token
-            const basicUser: UserData = {
-                id: 0,
-                username: payload.username || payload.email,
-                email: payload.email,
-                firstName: payload.firstName || '',
-                lastName: payload.lastName || '',
-                phone: payload.phone || '',
-                role: 'PLAYER',
-                freeBetsCount: 0,
-                profilePhotoUrl: undefined,
-            };
-            return basicUser;
+            // Registration successful - email verification required
+            // Do NOT save tokens or set user state
+            console.log('[AuthProvider] Registration successful. Verification email sent to:', data.email);
+            return data;
         } catch (error) {
             console.error('Registration error:', error);
             throw error;
@@ -139,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             console.log('[AuthProvider] Refreshing user data from backend');
             const data = await AuthApi.getCurrentUser();
-            
+
             if (data && data.user) {
                 const userData: UserData = {
                     id: data.user.id,
@@ -152,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     freeBetsCount: data.user.freeBetsCount || 0,
                     profilePhotoUrl: data.user.profilePhotoUrl,
                 };
-                
+
                 await AuthStorage.saveUserData(userData);
                 setUser(userData);
                 console.log('[AuthProvider] User data refreshed successfully');
