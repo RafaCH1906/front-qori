@@ -16,7 +16,7 @@ export default function RootLayout() {
         <ThemeProvider>
           <ToastProvider>
             <LocationProvider checkOnMount={true}>
-              <LocationGuard>
+              {/* <LocationGuard> */}
                 <BettingProvider>
                   <StatusBar style="auto" />
                   <Stack
@@ -34,7 +34,7 @@ export default function RootLayout() {
                     <Stack.Screen name="shake-sensor" options={{ headerShown: false }} />
                   </Stack>
                 </BettingProvider>
-              </LocationGuard>
+              {/* </LocationGuard> */}
             </LocationProvider>
           </ToastProvider>
         </ThemeProvider>
