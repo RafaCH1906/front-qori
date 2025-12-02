@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +22,20 @@ export function PeruOnlyGuard({
 }: PeruOnlyGuardProps) {
     const { colors } = useTheme();
     const { isAvailable, isLoading, error, checkAgain, countryCode } = usePeruOnly();
+
+    // Show alert when user is detected outside Peru
+    useEffect(() => {
+        if (!isLoading && !isAvailable && countryCode && countryCode !== 'PE') {
+            Alert.alert(
+                '🚫 Acceso Restringido',
+                `No puedes usar este servicio. Estás fuera de Perú.\n\nUbicación detectada: ${countryCode}\n\nQORIBET solo está disponible para usuarios ubicados en Perú por regulaciones de juego responsable.`,
+                [
+                    { text: 'Entendido', style: 'default' }
+                ],
+                { cancelable: false }
+            );
+        }
+    }, [isLoading, isAvailable, countryCode]);
 
     // Loading state
     if (isLoading) {

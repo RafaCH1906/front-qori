@@ -1,13 +1,12 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   View,
-  ScrollView,
-  StyleSheet,
   TouchableOpacity,
   Text,
   useWindowDimensions,
   Animated,
   Platform,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -36,9 +35,13 @@ import { useBalance } from "@/context/balance-context";
 import { useToast } from "@/context/toast-context";
 import { placeBet, PlaceBetRequest } from "@/lib/api/bets";
 import BetConfirmationModal from "@/components/bet-confirmation-modal";
-import { shouldUseLargeScreenLayout } from "@/lib/platform-utils";
+import { getDeviceType } from "@/lib/platform-utils";
+import { MobileLayout } from "@/components/layouts/mobile-layout";
+import { TabletLayout } from "@/components/layouts/tablet-layout";
+import { DesktopLayout } from "@/components/layouts/desktop-layout";
+import UnifiedBetPanel from "@/components/unified-bet-panel";
+import { PeruOnlyGuard } from "@/components/peru-only-guard";
 
-const DESKTOP_BREAKPOINT = 900;
 const MOBILE_BET_SLIP_MAX_HEIGHT = 420;
 const MOBILE_BET_SLIP_COLLAPSED_SPACE = 140;
 
@@ -61,7 +64,8 @@ function IndexScreen() {
   const { showToast } = useToast();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const betSlipAnim = useRef(new Animated.Value(0)).current;
-  const isLargeScreen = shouldUseLargeScreenLayout(width);
+
+  const deviceType = getDeviceType(width);
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -121,41 +125,45 @@ function IndexScreen() {
 
     setIsPlacingBet(true);
     try {
-      // Map bets to selections with optionId and oddsTaken (backend expects oddsTaken)
       const selections = pendingBet.bets.map(bet => ({
-        optionId: bet.id, // Assuming bet.id is the optionId from the backend
-        oddsTaken: bet.odds, // Backend expects oddsTaken instead of odds
+        optionId: bet.id,
+        oddsTaken: bet.odds,
+        matchId: bet.matchId,
       }));
+
+      console.log('[BET DEBUG] Pending bets:', JSON.stringify(pendingBet.bets, null, 2));
+      console.log('[BET DEBUG] Selections to send:', JSON.stringify(selections, null, 2));
+
+      // For single bets, include matchId at bet level
+      const matchId = pendingBet.bets.length === 1 ? pendingBet.bets[0].matchId : undefined;
 
       const request: PlaceBetRequest = {
         userId: user.id,
         totalStake: pendingBet.stake,
         selections,
         useFreeBet: pendingBet.useFreeBet,
+        matchId, // Include matchId for single bets
       };
 
-      const response = await placeBet(request);
+      console.log('[BET DEBUG] Full request:', JSON.stringify(request, null, 2));
+
+      await placeBet(request);
 
       const betType = pendingBet.bets.length > 1 ? "combinada" : "simple";
       const totalOdds = pendingBet.bets.reduce((acc, bet) => acc * bet.odds, 1);
       const potentialWin = pendingBet.useFreeBet
-        ? totalOdds * 10 // Placeholder for free bet value
+        ? totalOdds * 10
         : pendingBet.stake * totalOdds;
 
-      // Clear bets from slip
       clearBets();
-
-      // Close confirmation modal
       setShowConfirmation(false);
       setPendingBet(null);
 
-      // Wait for backend transaction to complete before refreshing balance
       console.log('[IndexScreen] Waiting for DB transaction to commit...');
       await new Promise(resolve => setTimeout(resolve, 500));
       console.log('[IndexScreen] Refreshing balance after bet...');
       await refreshBalance();
 
-      // Show success toast notification
       showToast(
         `¡Apuesta ${betType} realizada con éxito! 🍀\n` +
         `Monto: ${pendingBet.useFreeBet ? "Apuesta Gratis" : `S/ ${pendingBet.stake.toFixed(2)}`} | ` +
@@ -166,6 +174,11 @@ function IndexScreen() {
 
     } catch (error: any) {
       let errorMessage = "Error al realizar la apuesta. Por favor, intenta nuevamente.";
+
+      console.error('[IndexScreen] BET ERROR - Full error object:', error);
+      console.error('[IndexScreen] BET ERROR - Response:', error.response);
+      console.error('[IndexScreen] BET ERROR - Response data:', error.response?.data);
+      console.error('[IndexScreen] BET ERROR - Response status:', error.response?.status);
 
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
@@ -228,57 +241,75 @@ function IndexScreen() {
     outputRange: [0, -spacing.sm],
   });
 
-  const mobileContentPadding = isLargeScreen
-    ? spacing.xl
-    : isBetSlipExpanded
-      ? MOBILE_BET_SLIP_MAX_HEIGHT + expandedPortalBottom
-      : MOBILE_BET_SLIP_COLLAPSED_SPACE + spacing.lg;
+  const renderContent = () => {
+    const content = (
+      <>
+        <LeaguesBar
+          selectedLeagueId={selectedLeague}
+          onLeagueSelect={(league) => setSelectedLeague(league ? league.id : null)}
+        />
+        <BettingContent
+          onAddBet={handleAddBet}
+          onOpenMatch={handleOpenMatch}
+          selectedLeague={selectedLeague}
+        />
+      </>
+    );
+
+    if (deviceType === 'desktop') {
+      return (
+        <DesktopLayout
+          sidebar={
+            <UnifiedBetPanel
+              bets={selectedBets}
+              onRemoveBet={handleRemoveBet}
+              onPlaceBet={handlePlaceBet}
+            />
+          }
+        >
+          {content}
+        </DesktopLayout>
+      );
+    }
+
+    if (deviceType === 'tablet') {
+      return (
+        <TabletLayout>
+          {content}
+        </TabletLayout>
+      );
+    }
+
+    // Mobile
+    return (
+      <MobileLayout
+        contentContainerStyle={{
+          paddingBottom: isBetSlipExpanded
+            ? MOBILE_BET_SLIP_MAX_HEIGHT + expandedPortalBottom
+            : MOBILE_BET_SLIP_COLLAPSED_SPACE + spacing.lg,
+        }}
+      >
+        {content}
+      </MobileLayout>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <PeruOnlyGuard
+      loadingMessage="Verificando tu ubicación..."
+      deniedMessage="QORIBET solo está disponible en Perú"
+      showRetry={true}
+    >
+      <SafeAreaView style={styles.safeArea}>
       <Header
         onLoginClick={() => handleAuthOpen("login")}
         onRegisterClick={() => handleAuthOpen("register")}
       />
 
-      <ScrollView
-        style={styles.mainContainer}
-        contentContainerStyle={[
-          isLargeScreen ? styles.mainRow : styles.mainColumn,
-          !isLargeScreen && {
-            paddingBottom: mobileContentPadding,
-          },
-        ]}
-        showsVerticalScrollIndicator={isLargeScreen}
-      >
-        {/* Main Content (LEFT SIDE) */}
-        <View style={styles.contentWrapper}>
-          <LeaguesBar
-            selectedLeagueId={selectedLeague}
-            onLeagueSelect={(league) => setSelectedLeague(league ? league.id : null)}
-          />
-          <BettingContent
-            onAddBet={handleAddBet}
-            onOpenMatch={handleOpenMatch}
-            selectedLeague={selectedLeague}
-          />
-        </View>
+      {renderContent()}
 
-        {/* Bet Slip Sidebar - Fixed width on larger screens (RIGHT SIDE) */}
-        {isLargeScreen && (
-          <View style={styles.betSlipContainer}>
-            <BetSlip
-              bets={selectedBets}
-              onRemoveBet={handleRemoveBet}
-              onPlaceBet={handlePlaceBet}
-              showHeader
-            />
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Mobile Bet Slip Bottom Drawer */}
-      {!isLargeScreen && (
+      {/* Mobile Bet Slip Bottom Drawer (Visible on Mobile and Tablet) */}
+      {deviceType !== 'desktop' && (
         <Animated.View
           style={[styles.mobileBetSlipPortal, { bottom: portalBottom }]}
         >
@@ -364,7 +395,7 @@ function IndexScreen() {
         totalOdds={pendingBet?.bets.reduce((acc, bet) => acc * bet.odds, 1) || 0}
         potentialWinnings={
           pendingBet?.useFreeBet
-            ? (pendingBet?.bets.reduce((acc, bet) => acc * bet.odds, 1) || 0) * 10 // Placeholder for free bet value
+            ? (pendingBet?.bets.reduce((acc, bet) => acc * bet.odds, 1) || 0) * 10
             : (pendingBet?.stake || 0) * (pendingBet?.bets.reduce((acc, bet) => acc * bet.odds, 1) || 0)
         }
         balance={balance}
@@ -372,9 +403,8 @@ function IndexScreen() {
         useFreeBet={pendingBet?.useFreeBet}
       />
 
-
       {/* Floating Gift Button - Mobile Only */}
-      {Platform.OS !== 'web' && !isLargeScreen && (
+      {Platform.OS !== 'web' && deviceType === 'mobile' && (
         <TouchableOpacity
           style={[styles.floatingGiftButton, { backgroundColor: colors.primary.DEFAULT }]}
           onPress={() => setIsShakeModalOpen(true)}
@@ -384,6 +414,7 @@ function IndexScreen() {
         </TouchableOpacity>
       )}
     </SafeAreaView>
+    </PeruOnlyGuard>
   );
 }
 
@@ -393,32 +424,8 @@ const createStyles = (colors: ThemeColors) =>
       flex: 1,
       backgroundColor: colors.background,
     },
-    mainContainer: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    mainRow: {
-      flexDirection: "row",
-      paddingVertical: spacing.lg,
-      paddingLeft: spacing.xl * 3,
-      paddingRight: spacing.xl * 3,
-      gap: spacing.lg,
-      maxWidth: 1800,
-      marginHorizontal: "auto",
-    },
-    mainColumn: {
-      flexDirection: "column",
-      paddingHorizontal: 0, // Removed global padding for edge-to-edge scrolling
-      paddingVertical: spacing.md,
-      gap: spacing.md,
-    },
-    contentWrapper: {
-      flex: 1,
-      maxWidth: 1000,
-      paddingRight: 0, // Reset padding
-    },
     betSlipContainer: {
-      width: 450,
+      width: '100%',
       maxHeight: "100%",
     },
     mobileBetSlipPortal: {
@@ -431,6 +438,7 @@ const createStyles = (colors: ThemeColors) =>
       paddingTop: spacing.md,
       gap: spacing.sm,
       alignItems: "stretch",
+      zIndex: 100,
     },
     mobileBetSlipSheet: {
       marginBottom: spacing.sm,

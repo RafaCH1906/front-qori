@@ -27,6 +27,16 @@ export interface MatchDTO {
     awayshots?: number;
     homecorners?: number;
     awaycorners?: number;
+
+    // Match odds
+    localOdds?: number;
+    drawOdds?: number;
+    awayOdds?: number;
+
+    // Option IDs for betting
+    localOptionId?: number;
+    drawOptionId?: number;
+    awayOptionId?: number;
 }
 
 export interface OptionDTO {
@@ -36,13 +46,22 @@ export interface OptionDTO {
     result?: 'WON' | 'LOST' | 'VOID';
 }
 
+export interface MarketOption {
+    id: number;
+    name: string; // HOME, AWAY, X, OVER, UNDER
+    line?: number; // Para Over/Under (ej: 2.5)
+    odd: number;
+    scope: string; // TOTAL, HOME, AWAY
+    description?: string;
+}
+
 export interface MarketDTO {
     id: number;
     matchId: number;
-    name: string;
-    type: string;
-    status: 'OPEN' | 'CLOSED' | 'SETTLED';
-    options: OptionDTO[];
+    type: string; // RESULT, GOALS, CARDS, SHOTS, CORNERS
+    description: string;
+    active: boolean;
+    options?: MarketOption[];
 }
 
 export interface SelectionDTO {

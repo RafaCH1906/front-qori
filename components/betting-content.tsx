@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, ActivityIndicator, StyleSheet, useWindowDimensions } from "react-native";
 import MatchCard from "@/components/match-card";
 import { spacing, fontSize, fontWeight, ThemeColors, borderRadius } from "@/constants/theme";
 import { Match } from "@/constants/matches";
@@ -7,6 +7,7 @@ import { useTheme } from "@/context/theme-context";
 import { getUpcomingMatches, getLeagues, getOdds, getOptions } from "@/lib/api/matches";
 import { MatchDTO } from "@/lib/types";
 import { Ionicons } from "@expo/vector-icons";
+import { getDeviceType } from "@/lib/platform-utils";
 
 interface LocalLeague {
   id: number;
@@ -20,7 +21,7 @@ interface BettingContentProps {
   selectedLeague: number | null;
 }
 
-const MATCHES_PER_PAGE = 6;
+const MATCHES_PER_PAGE = 5;
 
 export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }: BettingContentProps) {
   const [matches, setMatches] = useState<MatchDTO[]>([]);
@@ -29,11 +30,15 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
   const [options, setOptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { width } = useWindowDimensions();
+  const deviceType = getDeviceType(width);
+  const isDesktop = deviceType === 'desktop';
+  const styles = useMemo(() => createStyles(colors, isDesktop), [colors, isDesktop]);
 
   const isMounted = useRef(true);
+
   useEffect(() => {
     isMounted.current = true;
     const fetchData = async () => {
@@ -41,7 +46,7 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
         setLoading(true);
         setError(null);
         const [matchesData, leaguesData, oddsData, optionsData] = await Promise.all([
-          getUpcomingMatches(),
+          getUpcomingMatches(MATCHES_PER_PAGE),
           getLeagues(),
           getOdds(),
           getOptions(),
@@ -77,10 +82,6 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
     return matches.filter((m) => m.league && m.league.id === selectedLeague);
   }, [matches, selectedLeague]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedLeague]);
-
   const convertedMatches: Match[] = useMemo(() => {
     return filteredMatches.map((m) => ({
       id: m.id,
@@ -88,24 +89,18 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
       homeTeam: m.homeTeam?.name ?? "",
       awayTeam: m.awayTeam?.name ?? "",
       time: formatMatchTime(m.date),
-      odds: { home: 1.85, draw: 3.6, away: 4.2 },
+      odds: {
+        home: m.localOdds ?? 0,
+        draw: m.drawOdds ?? 0,
+        away: m.awayOdds ?? 0
+      },
+      localOptionId: m.localOptionId,
+      drawOptionId: m.drawOptionId,
+      awayOptionId: m.awayOptionId,
     }));
   }, [filteredMatches]);
 
-  const totalPages = Math.ceil(convertedMatches.length / MATCHES_PER_PAGE);
-  const startIndex = (currentPage - 1) * MATCHES_PER_PAGE;
-  const endIndex = startIndex + MATCHES_PER_PAGE;
-  const paginatedMatches = convertedMatches.slice(startIndex, endIndex);
-
-  const handlePreviousPage = () => {
-    setCurrentPage(prev => Math.max(1, prev - 1));
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage(prev => Math.min(totalPages, prev + 1));
-  };
-
-  if (loading) {
+  if (loading && matches.length === 0) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
@@ -126,78 +121,32 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
     );
   }
 
-  if (matches.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.emptyIcon}>📅</Text>
-        <Text style={styles.emptyText}>No upcoming matches available</Text>
-        <Text style={styles.emptyHint}>Check back later for new matches</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.matchesSection}>
         <View style={styles.matchesHeader}>
-          <Text style={styles.sectionTitle}>
-            {selectedLeague ? leagues.find((l) => l.id === selectedLeague)?.name : "All Matches"}
-          </Text>
-          <Text style={styles.matchCount}>{convertedMatches.length} matches</Text>
-        </View>
-        <View style={styles.matchesList}>
-          {paginatedMatches.map((match) => (
-            <View key={match.id} style={styles.matchItem}>
-              <MatchCard match={match} onAddBet={onAddBet} onOpenMatch={() => onOpenMatch(match)} />
-            </View>
-          ))}
+          <Text style={styles.sectionTitle}>Próximos Partidos</Text>
         </View>
 
-        {totalPages > 1 && (
-          <View style={styles.paginationContainer}>
-            <TouchableOpacity
-              style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
-              onPress={handlePreviousPage}
-              disabled={currentPage === 1}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={20}
-                color={currentPage === 1 ? colors.muted.foreground : colors.primary.DEFAULT}
-              />
-              <Text style={[styles.paginationButtonText, currentPage === 1 && styles.paginationButtonTextDisabled]}>
-                Anterior
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.paginationInfo}>
-              <Text style={styles.paginationText}>
-                Página {currentPage} de {totalPages}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
-              onPress={handleNextPage}
-              disabled={currentPage === totalPages}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.paginationButtonText, currentPage === totalPages && styles.paginationButtonTextDisabled]}>
-                Siguiente
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={currentPage === totalPages ? colors.muted.foreground : colors.primary.DEFAULT}
-              />
-            </TouchableOpacity>
+        {convertedMatches.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Text style={styles.emptyIcon}>📅</Text>
+            <Text style={styles.emptyText}>No hay partidos próximos</Text>
+          </View>
+        ) : (
+          <View style={[styles.matchesList, isDesktop && styles.matchesGrid]}>
+            {convertedMatches.map((match) => (
+              <View key={match.id} style={[styles.matchItem, isDesktop && styles.matchItemDesktop]}>
+                <MatchCard match={match} onAddBet={onAddBet} onOpenMatch={() => onOpenMatch(match)} />
+              </View>
+            ))}
           </View>
         )}
       </View>
     </View>
   );
 }
+
 
 function formatMatchTime(isoDate: string): string {
   try {
@@ -208,9 +157,9 @@ function formatMatchTime(isoDate: string): string {
   }
 }
 
-const createStyles = (colors: ThemeColors) =>
+const createStyles = (colors: ThemeColors, isDesktop: boolean = false) =>
   StyleSheet.create({
-    container: { flex: 1, paddingHorizontal: spacing.md },
+    container: { flex: 1, paddingHorizontal: isDesktop ? spacing.xl : spacing.md },
     centerContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.xl, minHeight: 400 },
     loadingText: { marginTop: spacing.sm, fontSize: fontSize.base, color: colors.muted.foreground },
     errorIcon: { fontSize: 48, marginBottom: spacing.md },
@@ -219,12 +168,21 @@ const createStyles = (colors: ThemeColors) =>
     emptyIcon: { fontSize: 48, marginBottom: spacing.md },
     emptyText: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, color: colors.foreground, textAlign: "center", marginBottom: spacing.sm },
     emptyHint: { fontSize: fontSize.sm, color: colors.muted.foreground, textAlign: "center" },
-    sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold, marginBottom: spacing.md, color: colors.foreground },
+    sectionTitle: { fontSize: isDesktop ? fontSize.xl : fontSize.lg, fontWeight: fontWeight.semibold, marginBottom: spacing.md, color: colors.foreground },
     matchesSection: { marginBottom: spacing.lg },
     matchesHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
     matchCount: { fontSize: fontSize.sm, color: colors.muted.foreground },
     matchesList: { gap: spacing.md },
+    matchesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.lg,
+    },
     matchItem: { marginBottom: spacing.md },
+    matchItemDesktop: {
+      width: '100%', // Tarjetas a ancho completo en desktop para aprovechar espacio
+      marginBottom: 0,
+    },
     paginationContainer: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -262,5 +220,20 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.foreground,
       fontWeight: fontWeight.medium,
+    },
+    loadMoreButton: {
+      marginTop: spacing.lg,
+      paddingVertical: spacing.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    loadMoreText: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.medium,
+      color: colors.primary.DEFAULT,
     },
   });

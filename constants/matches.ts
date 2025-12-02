@@ -20,6 +20,9 @@ export type Match = {
   awayTeam: string;
   time: string;
   odds: { home: number; draw: number; away: number };
+  localOptionId?: number;
+  drawOptionId?: number;
+  awayOptionId?: number;
 };
 
 export const MATCHES: Match[] = [

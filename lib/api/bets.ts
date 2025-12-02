@@ -3,6 +3,7 @@ import api from "./axios";
 export interface BetSelection {
     optionId: number;
     oddsTaken: number; // Backend expects oddsTaken as BigDecimal
+    matchId?: number; // Optional matchId for validation
 }
 
 export interface PlaceBetRequest {
@@ -10,6 +11,7 @@ export interface PlaceBetRequest {
     totalStake: number;
     selections: BetSelection[];
     useFreeBet?: boolean;
+    matchId?: number; // For single bets
 }
 
 export interface BetResponse {
@@ -32,9 +34,17 @@ export const placeBet = async (request: PlaceBetRequest): Promise<BetResponse> =
 };
 
 /**
- * Get user's bet history
+ * Get user's bet history (uses authenticated user from token)
  */
-export const getBetHistory = async (userId: number): Promise<BetResponse[]> => {
+export const getBetHistory = async (): Promise<BetResponse[]> => {
+    const { data } = await api.get(`/bets/user/me`);
+    return data;
+};
+
+/**
+ * Get user's bet history by userId (admin only)
+ */
+export const getBetHistoryByUserId = async (userId: number): Promise<BetResponse[]> => {
     const { data } = await api.get(`/bets/user/${userId}`);
     return data;
 };

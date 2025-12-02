@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from "react-native";
 import { Card } from "@/components/ui/card";
 import {
   spacing,
@@ -10,6 +10,7 @@ import {
 } from "@/constants/theme";
 import { useTheme } from "@/context/theme-context";
 import { useBetting } from "@/context/betting-context";
+import { getDeviceType } from "@/lib/platform-utils";
 
 interface MatchCardProps {
   match: {
@@ -18,19 +19,30 @@ interface MatchCardProps {
     awayTeam: string;
     time: string;
     odds: { home: number; draw: number; away: number };
+    localOptionId?: number;
+    drawOptionId?: number;
+    awayOptionId?: number;
   };
   onAddBet: (bet: any) => void;
   onOpenMatch: () => void;
+  variant?: 'compact' | 'standard' | 'large';
 }
 
 export default function MatchCard({
   match,
   onAddBet,
   onOpenMatch,
+  variant,
 }: MatchCardProps) {
   const { colors } = useTheme();
   const { selectedBets } = useBetting();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { width } = useWindowDimensions();
+  const deviceType = getDeviceType(width);
+
+  // Determine variant if not provided
+  const cardVariant = variant || (deviceType === 'mobile' ? 'compact' : deviceType === 'desktop' ? 'large' : 'standard');
+
+  const styles = useMemo(() => createStyles(colors, cardVariant), [colors, cardVariant]);
 
   // Check if a specific bet type is selected for this match
   const isBetSelected = (type: "home" | "draw" | "away") => {
@@ -40,7 +52,18 @@ export default function MatchCard({
   };
 
   const handleBet = (type: "home" | "draw" | "away") => {
+    let optionId;
+    if (type === "home") optionId = match.localOptionId;
+    else if (type === "draw") optionId = match.drawOptionId;
+    else if (type === "away") optionId = match.awayOptionId;
+
+    if (!optionId) {
+      console.warn("Option ID missing for type:", type);
+      return;
+    }
+
     onAddBet({
+      id: optionId,
       match: `${match.homeTeam} vs ${match.awayTeam}`,
       type,
       odds: match.odds[type],
@@ -149,19 +172,19 @@ export default function MatchCard({
   );
 }
 
-const createStyles = (colors: ThemeColors) =>
+const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'large') =>
   StyleSheet.create({
     card: {
-      padding: spacing.lg,
+      padding: variant === 'compact' ? spacing.md : spacing.lg,
       backgroundColor: colors.card.DEFAULT,
     },
     matchInfo: {
-      marginBottom: spacing.lg,
+      marginBottom: spacing.md,
     },
     timeText: {
-      fontSize: fontSize.sm,
+      fontSize: fontSize.xs,
       color: colors.muted.foreground,
-      marginBottom: spacing.sm,
+      marginBottom: spacing.xs,
     },
     teamsContainer: {
       flexDirection: "row",
@@ -171,8 +194,8 @@ const createStyles = (colors: ThemeColors) =>
     teamText: {
       fontWeight: fontWeight.semibold,
       color: colors.foreground,
+      fontSize: variant === 'large' ? fontSize.lg : fontSize.base,
       flex: 1,
-      fontSize: fontSize.base,
     },
     teamTextRight: {
       textAlign: "right",
@@ -185,15 +208,16 @@ const createStyles = (colors: ThemeColors) =>
     oddsContainer: {
       flexDirection: "row",
       gap: spacing.sm,
-      marginBottom: spacing.md,
+      marginBottom: 0,
     },
     oddsButton: {
       flex: 1,
       borderWidth: 2,
       borderColor: colors.border,
       borderRadius: borderRadius.lg,
-      paddingVertical: spacing.md,
+      paddingVertical: variant === 'large' ? spacing.lg : spacing.md,
       alignItems: "center",
+      justifyContent: 'center',
       backgroundColor: colors.background,
     },
     oddsButtonSelected: {
@@ -203,14 +227,14 @@ const createStyles = (colors: ThemeColors) =>
     oddsLabel: {
       fontSize: fontSize.xs,
       color: colors.muted.foreground,
-      marginBottom: 4,
+      marginBottom: 2,
     },
     oddsLabelSelected: {
       color: "#1E293B",
     },
     oddsValue: {
       fontWeight: fontWeight.bold,
-      fontSize: fontSize.lg,
+      fontSize: variant === 'large' ? fontSize.xl : fontSize.lg,
       color: colors.primary.DEFAULT,
     },
     oddsValueSelected: {
