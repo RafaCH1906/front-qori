@@ -154,11 +154,11 @@ export const validatePassword = (password: string) => {
         upper: /[A-Z]/.test(password),
         lower: /[a-z]/.test(password),
         number: /\d/.test(password),
-        special: /[@$!%*?&]/.test(password),
+        special: /[@$!%*?&\-+#]/.test(password),
         isValid: password.length >= 8 &&
             /[A-Z]/.test(password) &&
             /[a-z]/.test(password) &&
             /\d/.test(password) &&
-            /[@$!%*?&]/.test(password)
+            /[@$!%*?&\-+#]/.test(password)
     };
 };
