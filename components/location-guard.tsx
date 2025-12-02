@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Platform, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Platform, Linking, ActivityIndicator, Alert } from 'react-native';
 import { useLocation } from '@/context/location-context';
 import { Button } from '@/components/ui/button';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,7 @@ interface LocationGuardProps {
 }
 
 export function LocationGuard({ children }: LocationGuardProps) {
-    const { permissionStatus, requestPermission, isLoading } = useLocation();
+    const { permissionStatus, requestPermission, isLoading, isInPeru, locationData, checkLocation } = useLocation();
     const { colors } = useTheme();
     const styles = createStyles(colors);
 
@@ -21,6 +21,18 @@ export function LocationGuard({ children }: LocationGuardProps) {
             requestPermission();
         }
     }, [permissionStatus, requestPermission]);
+
+    // Show alert when user is outside Peru
+    useEffect(() => {
+        if (!isLoading && permissionStatus === 'granted' && isInPeru === false && locationData?.countryCode) {
+            Alert.alert(
+                '🚫 Acceso Restringido',
+                `No puedes usar este servicio. Estás fuera de Perú.\n\nUbicación detectada: ${locationData.countryCode}\n\nQORIBET solo está disponible para usuarios ubicados en Perú por regulaciones de juego responsable.`,
+                [{ text: 'Entendido', style: 'default' }],
+                { cancelable: false }
+            );
+        }
+    }, [isLoading, permissionStatus, isInPeru, locationData]);
 
     const openSettings = async () => {
         if (Platform.OS === 'ios') {
@@ -70,7 +82,34 @@ export function LocationGuard({ children }: LocationGuardProps) {
         );
     }
 
-    // Permission granted
+    // Check if user is in Peru after permission is granted
+    if (permissionStatus === 'granted' && isInPeru === false && locationData?.countryCode) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.card}>
+                    <Ionicons name="location" size={64} color={colors.destructive.DEFAULT} style={styles.icon} />
+                    <Text style={styles.title}>🚫 Servicio No Disponible</Text>
+                    <Text style={styles.description}>
+                        QORIBET solo está disponible para usuarios en Perú.
+                    </Text>
+                    <Text style={[styles.description, { fontWeight: fontWeight.semibold }]}>
+                        Ubicación detectada: {locationData.countryName || locationData.countryCode}
+                    </Text>
+                    <Text style={styles.description}>
+                        Este servicio cumple con regulaciones de juego responsable y solo puede ser usado desde territorio peruano.
+                    </Text>
+
+                    <View style={styles.actions}>
+                        <Button onPress={checkLocation} style={styles.button}>
+                            Verificar Ubicación Nuevamente
+                        </Button>
+                    </View>
+                </View>
+            </View>
+        );
+    }
+
+    // Permission granted and in Peru
     return <>{children}</>;
 }
 
