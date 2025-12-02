@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,13 +10,17 @@ import { useBalance } from "@/context/balance-context";
 import { Ionicons } from "@expo/vector-icons";
 import { spacing, fontSize, fontWeight, borderRadius, ThemeColors } from "@/constants/theme";
 import ProfilePhotoSelector from "@/components/profile-photo-selector";
+import { getDeviceType } from "@/lib/platform-utils";
 
 export default function ProfileScreen() {
     const { user, logout, loading, refreshUser } = useAuth();
     const { balance, freeBetsCount } = useBalance();
     const router = useRouter();
     const { colors } = useTheme();
-    const styles = useMemo(() => createStyles(colors), [colors]);
+    const { width } = useWindowDimensions();
+    const deviceType = getDeviceType(width);
+    const isDesktop = deviceType === 'desktop';
+    const styles = useMemo(() => createStyles(colors, isDesktop), [colors, isDesktop]);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -50,87 +54,89 @@ export default function ProfileScreen() {
                     <View style={{ width: 40 }} />
                 </View>
 
-                {/* Profile Card */}
-                <Card style={styles.profileCard}>
-                    <View style={styles.avatarContainer}>
-                        <View style={styles.avatar}>
-                            {user.profilePhotoUrl ? (
-                                <Image 
-                                    source={{ uri: user.profilePhotoUrl }} 
-                                    style={styles.avatarImage}
-                                    resizeMode="cover"
-                                />
-                            ) : (
-                                <Ionicons name="person" size={48} color={colors.primary.foreground} />
-                            )}
+                <View style={[styles.contentWrapper, isDesktop && styles.contentWrapperDesktop]}>
+                    {/* Profile Card */}
+                    <Card style={styles.profileCard}>
+                        <View style={styles.avatarContainer}>
+                            <View style={styles.avatar}>
+                                {user.profilePhotoUrl ? (
+                                    <Image 
+                                        source={{ uri: user.profilePhotoUrl }} 
+                                        style={styles.avatarImage}
+                                        resizeMode="cover"
+                                    />
+                                ) : (
+                                    <Ionicons name="person" size={isDesktop ? 64 : 48} color={colors.primary.foreground} />
+                                )}
+                            </View>
+                            <Text style={styles.userName}>
+                                {user.firstName} {user.lastName}
+                            </Text>
+                            <Text style={styles.userEmail}>{user.email}</Text>
                         </View>
-                        <Text style={styles.userName}>
-                            {user.firstName} {user.lastName}
-                        </Text>
-                        <Text style={styles.userEmail}>{user.email}</Text>
-                    </View>
-                </Card>
+                    </Card>
 
-                {/* Profile Photo Selector */}
-                <ProfilePhotoSelector onPhotoUploaded={handlePhotoUploaded} />
+                    {/* Profile Photo Selector */}
+                    <ProfilePhotoSelector onPhotoUploaded={handlePhotoUploaded} />
 
-                {/* Balance Card */}
-                <Card style={styles.balanceCard}>
-                    <View style={styles.balanceRow}>
-                        <View style={styles.balanceItem}>
-                            <Ionicons name="wallet" size={24} color={colors.accent.DEFAULT} />
-                            <Text style={styles.balanceLabel}>Saldo</Text>
-                            <Text style={styles.balanceValue}>S/ {balance.toFixed(2)}</Text>
+                    {/* Balance Card */}
+                    <Card style={styles.balanceCard}>
+                        <View style={[styles.balanceRow, isDesktop && styles.balanceRowDesktop]}>
+                            <View style={styles.balanceItem}>
+                                <Ionicons name="wallet" size={isDesktop ? 32 : 24} color={colors.accent.DEFAULT} />
+                                <Text style={styles.balanceLabel}>Saldo</Text>
+                                <Text style={styles.balanceValue}>S/ {balance.toFixed(2)}</Text>
+                            </View>
+                            <View style={styles.balanceDivider} />
+                            <View style={styles.balanceItem}>
+                                <Ionicons name="ticket" size={isDesktop ? 32 : 24} color={colors.primary.DEFAULT} />
+                                <Text style={styles.balanceLabel}>Apuestas Gratis</Text>
+                                <Text style={styles.balanceValue}>{freeBetsCount}</Text>
+                            </View>
                         </View>
-                        <View style={styles.balanceDivider} />
-                        <View style={styles.balanceItem}>
-                            <Ionicons name="ticket" size={24} color={colors.primary.DEFAULT} />
-                            <Text style={styles.balanceLabel}>Apuestas Gratis</Text>
-                            <Text style={styles.balanceValue}>{freeBetsCount}</Text>
+                    </Card>
+
+                    {/* Menu Options */}
+                    <Card style={styles.menuCard}>
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => router.push("/bet-history")}
+                        >
+                            <View style={styles.menuItemLeft}>
+                                <Ionicons name="time-outline" size={isDesktop ? 28 : 24} color={colors.accent.DEFAULT} />
+                                <Text style={styles.menuItemText}>Historial de Apuestas</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
+                        </TouchableOpacity>
+
+                        <View style={styles.menuDivider} />
+
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => router.push("/")}
+                        >
+                            <View style={styles.menuItemLeft}>
+                                <Ionicons name="home-outline" size={isDesktop ? 28 : 24} color={colors.primary.DEFAULT} />
+                                <Text style={styles.menuItemText}>Volver al Inicio</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
+                        </TouchableOpacity>
+                    </Card>
+
+                    {/* Logout Button */}
+                    <Button onPress={logout} variant="destructive" size="lg">
+                        <View style={styles.logoutButtonContent}>
+                            <Ionicons name="log-out-outline" size={20} color={colors.destructive.foreground} />
+                            <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
                         </View>
-                    </View>
-                </Card>
-
-                {/* Menu Options */}
-                <Card style={styles.menuCard}>
-                    <TouchableOpacity
-                        style={styles.menuItem}
-                        onPress={() => router.push("/bet-history")}
-                    >
-                        <View style={styles.menuItemLeft}>
-                            <Ionicons name="time-outline" size={24} color={colors.accent.DEFAULT} />
-                            <Text style={styles.menuItemText}>Historial de Apuestas</Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
-                    </TouchableOpacity>
-
-                    <View style={styles.menuDivider} />
-
-                    <TouchableOpacity
-                        style={styles.menuItem}
-                        onPress={() => router.push("/")}
-                    >
-                        <View style={styles.menuItemLeft}>
-                            <Ionicons name="home-outline" size={24} color={colors.primary.DEFAULT} />
-                            <Text style={styles.menuItemText}>Volver al Inicio</Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
-                    </TouchableOpacity>
-                </Card>
-
-                {/* Logout Button */}
-                <Button onPress={logout} variant="destructive" size="lg">
-                    <View style={styles.logoutButtonContent}>
-                        <Ionicons name="log-out-outline" size={20} color={colors.destructive.foreground} />
-                        <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
-                    </View>
-                </Button>
+                    </Button>
+                </View>
             </ScrollView>
         </SafeAreaView>
     );
 }
 
-const createStyles = (colors: ThemeColors) =>
+const createStyles = (colors: ThemeColors, isDesktop: boolean = false) =>
     StyleSheet.create({
         container: {
             flex: 1,
@@ -147,8 +153,16 @@ const createStyles = (colors: ThemeColors) =>
             color: colors.muted.foreground,
         },
         scrollContent: {
-            padding: spacing.lg,
+            padding: isDesktop ? spacing.xl : spacing.lg,
             gap: spacing.lg,
+        },
+        contentWrapper: {
+            gap: spacing.lg,
+        },
+        contentWrapperDesktop: {
+            maxWidth: 800,
+            alignSelf: 'center',
+            width: '100%',
         },
         header: {
             flexDirection: "row",
@@ -163,26 +177,29 @@ const createStyles = (colors: ThemeColors) =>
             justifyContent: "center",
         },
         headerTitle: {
-            fontSize: fontSize["2xl"],
+            fontSize: isDesktop ? fontSize["3xl"] : fontSize["2xl"],
             fontWeight: fontWeight.bold,
             color: colors.foreground,
         },
         profileCard: {
-            padding: spacing.xl,
+            padding: isDesktop ? spacing.lg : spacing.md,
+            paddingVertical: isDesktop ? 40 : 32,
             backgroundColor: colors.card.DEFAULT,
+            alignItems: 'center',
         },
         avatarContainer: {
             alignItems: "center",
-            gap: spacing.sm,
+            gap: isDesktop ? spacing.sm : spacing.xs,
+            paddingVertical: isDesktop ? spacing.sm : spacing.xs,
         },
         avatar: {
-            width: 96,
-            height: 96,
-            borderRadius: 48,
+            width: isDesktop ? 160 : 120,
+            height: isDesktop ? 160 : 120,
+            borderRadius: isDesktop ? 80 : 60,
             backgroundColor: colors.primary.DEFAULT,
             alignItems: "center",
             justifyContent: "center",
-            marginBottom: spacing.sm,
+            marginBottom: isDesktop ? spacing.lg : spacing.md,
             overflow: 'hidden',
         },
         avatarImage: {
@@ -190,21 +207,25 @@ const createStyles = (colors: ThemeColors) =>
             height: '100%',
         },
         userName: {
-            fontSize: fontSize.xl,
+            fontSize: isDesktop ? fontSize["2xl"] : fontSize.xl,
             fontWeight: fontWeight.bold,
             color: colors.foreground,
         },
         userEmail: {
-            fontSize: fontSize.sm,
+            fontSize: isDesktop ? fontSize.base : fontSize.sm,
             color: colors.muted.foreground,
         },
         balanceCard: {
-            padding: spacing.lg,
+            padding: isDesktop ? spacing.xl : spacing.lg,
             backgroundColor: colors.card.DEFAULT,
         },
         balanceRow: {
             flexDirection: "row",
             alignItems: "center",
+        },
+        balanceRowDesktop: {
+            gap: spacing.xl,
+            justifyContent: 'center',
         },
         balanceItem: {
             flex: 1,
@@ -213,28 +234,28 @@ const createStyles = (colors: ThemeColors) =>
         },
         balanceDivider: {
             width: 1,
-            height: 60,
+            height: isDesktop ? 80 : 60,
             backgroundColor: colors.border,
         },
         balanceLabel: {
-            fontSize: fontSize.xs,
+            fontSize: isDesktop ? fontSize.sm : fontSize.xs,
             color: colors.muted.foreground,
             textAlign: "center",
         },
         balanceValue: {
-            fontSize: fontSize.xl,
+            fontSize: isDesktop ? fontSize["2xl"] : fontSize.xl,
             fontWeight: fontWeight.bold,
             color: colors.foreground,
         },
         menuCard: {
-            padding: spacing.md,
+            padding: isDesktop ? spacing.lg : spacing.md,
             backgroundColor: colors.card.DEFAULT,
         },
         menuItem: {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            paddingVertical: spacing.md,
+            paddingVertical: isDesktop ? spacing.lg : spacing.md,
             paddingHorizontal: spacing.sm,
         },
         menuItemLeft: {
@@ -243,7 +264,7 @@ const createStyles = (colors: ThemeColors) =>
             gap: spacing.md,
         },
         menuItemText: {
-            fontSize: fontSize.base,
+            fontSize: isDesktop ? fontSize.lg : fontSize.base,
             fontWeight: fontWeight.semibold,
             color: colors.foreground,
         },
@@ -259,7 +280,7 @@ const createStyles = (colors: ThemeColors) =>
         },
         logoutButtonText: {
             color: colors.destructive.foreground,
-            fontSize: fontSize.base,
+            fontSize: isDesktop ? fontSize.lg : fontSize.base,
             fontWeight: fontWeight.semibold,
         },
     });

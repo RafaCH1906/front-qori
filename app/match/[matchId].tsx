@@ -21,15 +21,15 @@ import {
 import { useTheme } from "@/context/theme-context";
 import { useBetting } from "@/context/betting-context";
 import { BET_OPTIONS, BetCategoryKey } from "@/constants/matches";
-import BetSlip from "@/components/bet-slip";
+import UnifiedBetPanel from "@/components/unified-bet-panel";
 import { useAuth } from "@/context/AuthProvider";
 import { useBalance } from "@/context/balance-context";
 import { useToast } from "@/context/toast-context";
 import { placeBet, PlaceBetRequest } from "@/lib/api/bets";
 import BetConfirmationModal from "@/components/bet-confirmation-modal";
 import { shouldUseLargeScreenLayout } from "@/lib/platform-utils";
-import { getMatchById } from "@/lib/api/matches";
-import { MatchDTO } from "@/lib/types";
+import { getMatchById, getMarketsByMatch, getMarketOptions } from "@/lib/api/matches";
+import { MatchDTO, MarketDTO } from "@/lib/types";
 
 export default function MatchDetailScreen() {
   const { matchId } = useLocalSearchParams();
@@ -44,10 +44,16 @@ export default function MatchDetailScreen() {
   const [pendingBet, setPendingBet] = useState<{ stake: number, bets: any[] } | null>(null);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
   const [match, setMatch] = useState<MatchDTO | null>(null);
+  const [markets, setMarkets] = useState<MarketDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isLargeScreen = shouldUseLargeScreenLayout(width);
+
+  useEffect(() => {
+    console.log("[MatchDetail] Component mounted");
+    console.log("[MatchDetail] Current user:", user ? { id: user.id, email: user.email, role: user.role } : "NOT LOGGED IN");
+  }, [user]);
 
   useEffect(() => {
     const fetchMatch = async () => {
@@ -62,6 +68,53 @@ export default function MatchDetailScreen() {
         setError(null);
         const matchData = await getMatchById(parseInt(matchId as string));
         setMatch(matchData);
+        
+        // Load markets for this match
+        try {
+          console.log("[MatchDetail] About to fetch markets for matchId:", matchId);
+          const marketsData = await getMarketsByMatch(parseInt(matchId as string));
+          console.log("[MatchDetail] Successfully fetched markets:", marketsData.length);
+          console.log("Raw markets from API:", JSON.stringify(marketsData, null, 2));
+          
+          // If markets don't have options, load them manually
+          const marketsWithOptions = await Promise.all(
+            marketsData.map(async (market: MarketDTO) => {
+              if (!market.options || market.options.length === 0) {
+                try {
+                  const options = await getMarketOptions(market.id);
+                  return { ...market, options };
+                } catch (err) {
+                  console.error(`Failed to load options for market ${market.id}:`, err);
+                  return market;
+                }
+              }
+              return market;
+            })
+          );
+          
+          console.log("[MatchDetail] ========== MARKETS DEBUG ==========");
+          console.log("[MatchDetail] Markets with options loaded:", marketsWithOptions.length);
+          marketsWithOptions.forEach((market, index) => {
+            console.log(`[MatchDetail] Market ${index + 1}:`, {
+              id: market.id,
+              type: market.type,
+              description: market.description,
+              optionsCount: market.options?.length || 0,
+              firstOption: market.options?.[0] ? {
+                id: market.options[0].id,
+                name: market.options[0].name,
+                line: market.options[0].line
+              } : null
+            });
+          });
+          console.log("[MatchDetail] ====================================");
+          
+          setMarkets(marketsWithOptions || []);
+        } catch (marketErr) {
+          console.error("Failed to fetch markets:", marketErr);
+          // Don't fail the whole page if markets fail to load
+          setMarkets([]);
+        }
       } catch (err: any) {
         console.error("Failed to fetch match:", err);
         setError("No se pudo cargar el partido. Por favor, intenta nuevamente.");
@@ -117,32 +170,57 @@ export default function MatchDetailScreen() {
       showToast("Por favor, inicia sesión para realizar apuestas", "error");
       return;
     }
-    const defaultOdds = { home: 1.85, draw: 3.6, away: 4.2 };
+
+    // Get the actual optionId from match data
+    let optionId;
+    
+    if (type === "home") optionId = match.localOptionId;
+    else if (type === "draw") optionId = match.drawOptionId;
+    else if (type === "away") optionId = match.awayOptionId;
+
+    if (!optionId) {
+      console.warn("Option ID missing for type:", type);
+      showToast("Esta opción de apuesta no está disponible", "error");
+      return;
+    }
+
+    // Use actual odds from match, don't use fake defaults
+    const odds = {
+      home: match.localOdds || 0,
+      draw: match.drawOdds || 0,
+      away: match.awayOdds || 0,
+    };
+
+    // Don't allow betting if odds are 0
+    if (odds[type] === 0) {
+      showToast("Esta opción de apuesta no está disponible aún", "error");
+      return;
+    }
+
     addBet({
+      id: optionId, // CRITICAL: Pass the actual optionId
       match: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
       type,
-      odds: defaultOdds[type],
+      odds: odds[type],
       matchId: match.id,
       betType: "result",
     });
   };
 
-  const handleAdditionalBet = (
-    category: BetCategoryKey,
-    option: { label: string; odds: number; value: string }
-  ) => {
+  const handleAdditionalBet = (optionId: number, optionName: string, optionOdd: number, marketType: string) => {
     if (!match) return;
     if (!user) {
       showToast("Por favor, inicia sesión para realizar apuestas", "error");
       return;
     }
+
     addBet({
+      id: optionId,
       match: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
-      type: option.value,
-      label: `${BET_OPTIONS[category].label}: ${option.label}`,
-      odds: option.odds,
+      type: optionName,
+      odds: optionOdd,
       matchId: match.id,
-      betType: category,
+      betType: marketType,
     });
   };
 
@@ -162,13 +240,18 @@ export default function MatchDetailScreen() {
     try {
       const selections = pendingBet.bets.map(bet => ({
         optionId: bet.id,
-        oddsTaken: bet.odds, // Backend expects oddsTaken instead of odds
+        oddsTaken: bet.odds,
+        matchId: bet.matchId, // Include matchId for validation
       }));
+
+      // For single bets, include matchId at bet level
+      const matchId = pendingBet.bets.length === 1 ? pendingBet.bets[0].matchId : undefined;
 
       const request: PlaceBetRequest = {
         userId: user.id,
         totalStake: pendingBet.stake,
         selections,
+        matchId, // Include matchId for single bets
       };
 
       const response = await placeBet(request);
@@ -276,8 +359,6 @@ export default function MatchDetailScreen() {
     );
   }
 
-  const defaultOdds = { home: 1.85, draw: 3.6, away: 4.2 };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -330,6 +411,7 @@ export default function MatchDetailScreen() {
                     isBetSelected("home") && styles.oddsButtonSelected,
                   ]}
                   activeOpacity={0.7}
+                  disabled={!match.localOdds || match.localOdds === 0}
                 >
                   <Text
                     style={[
@@ -345,7 +427,7 @@ export default function MatchDetailScreen() {
                       isBetSelected("home") && styles.oddsValueSelected,
                     ]}
                   >
-                    {defaultOdds.home.toFixed(2)}
+                    {(match.localOdds || 0).toFixed(2)}
                   </Text>
                 </TouchableOpacity>
 
@@ -356,6 +438,7 @@ export default function MatchDetailScreen() {
                     isBetSelected("draw") && styles.oddsButtonSelected,
                   ]}
                   activeOpacity={0.7}
+                  disabled={!match.drawOdds || match.drawOdds === 0}
                 >
                   <Text
                     style={[
@@ -371,7 +454,7 @@ export default function MatchDetailScreen() {
                       isBetSelected("draw") && styles.oddsValueSelected,
                     ]}
                   >
-                    {defaultOdds.draw.toFixed(2)}
+                    {(match.drawOdds || 0).toFixed(2)}
                   </Text>
                 </TouchableOpacity>
 
@@ -382,6 +465,7 @@ export default function MatchDetailScreen() {
                     isBetSelected("away") && styles.oddsButtonSelected,
                   ]}
                   activeOpacity={0.7}
+                  disabled={!match.awayOdds || match.awayOdds === 0}
                 >
                   <Text
                     style={[
@@ -397,7 +481,7 @@ export default function MatchDetailScreen() {
                       isBetSelected("away") && styles.oddsValueSelected,
                     ]}
                   >
-                    {defaultOdds.away.toFixed(2)}
+                    {(match.awayOdds || 0).toFixed(2)}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -406,59 +490,131 @@ export default function MatchDetailScreen() {
 
           <View style={styles.additionalBetsSection}>
             <Text style={styles.additionalBetsTitle}>Más Opciones de Apuesta</Text>
-            {Object.entries(BET_OPTIONS).map(([key, config]) => (
-              <View key={key} style={styles.betCategoryCard}>
-                <Text style={styles.betCategoryTitle}>{config.label}</Text>
-                <View style={styles.betOptionsGrid}>
-                  {config.options.map((option) => {
-                    const isSelected = isAdditionalBetSelected(
-                      key as BetCategoryKey,
-                      option.value
-                    );
-                    return (
-                      <TouchableOpacity
-                        key={option.value}
-                        style={[
-                          styles.betOption,
-                          isSelected && styles.betOptionSelected,
-                        ]}
-                        activeOpacity={0.8}
-                        onPress={() =>
-                          handleAdditionalBet(key as BetCategoryKey, option)
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.betOptionLabel,
-                            isSelected && styles.betOptionLabelSelected,
-                          ]}
-                        >
-                          {option.label}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.betOptionOdds,
-                            isSelected && styles.betOptionOddsSelected,
-                          ]}
-                        >
-                          {option.odds.toFixed(2)}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+            {markets.length === 0 ? (
+              <View style={styles.noMarketsContainer}>
+                <Text style={styles.noMarketsText}>No hay mercados adicionales disponibles</Text>
               </View>
-            ))}
+            ) : (
+              markets
+                .filter(market => {
+                  // Log each market for debugging
+                  console.log('[MatchDetail] Checking market:', {
+                    id: market.id,
+                    type: market.type,
+                    description: market.description,
+                    optionsCount: market.options?.length || 0
+                  });
+                  
+                  // Only show TOTAL markets (not team-specific ones)
+                  const desc = market.description?.toLowerCase() || '';
+                  const type = market.type?.toLowerCase() || '';
+                  const isTotal = desc.includes('total de') || desc.includes('total');
+                  
+                  const shouldShow = isTotal && (
+                    desc.includes('gol') || type.includes('goal') ||
+                    desc.includes('tarjeta') || type.includes('card') ||
+                    desc.includes('corner') || type.includes('corner') ||
+                    desc.includes('disparo') || type.includes('shot')
+                  );
+                  
+                  console.log('[MatchDetail] Market filter result:', shouldShow);
+                  return shouldShow;
+                })
+                .map((market) => {
+                  // Map market type to display title
+                  const getMarketTitle = (market: MarketDTO) => {
+                    const type = market.type?.toUpperCase() || '';
+                    const desc = market.description?.toLowerCase() || '';
+                    
+                    if (type.includes('GOALS') || type.includes('GOLES') || desc.includes('gol')) {
+                      return 'Total de goles';
+                    }
+                    if (type.includes('CARDS') || type.includes('TARJETAS') || type.includes('CARD') || desc.includes('tarjeta')) {
+                      return 'Total de tarjetas';
+                    }
+                    if (type.includes('CORNERS') || type.includes('CORNER') || type.includes('TIROS_DE_ESQUINA') || desc.includes('corner') || desc.includes('esquina')) {
+                      return 'Total de corners';
+                    }
+                    if (type.includes('SHOTS') || type.includes('DISPAROS') || type.includes('TIROS') || desc.includes('disparo') || desc.includes('tiro')) {
+                      return 'Total de disparos';
+                    }
+                    return market.description;
+                  };
+                  
+                  return (
+                    <View key={market.id} style={styles.betCategoryCard}>
+                      <Text style={styles.betCategoryTitle}>{getMarketTitle(market)}</Text>
+                      <View style={styles.betOptionsGrid}>
+                        {(!market.options || market.options.length === 0) ? (
+                          <Text style={styles.betCategoryTitle}>No hay opciones disponibles</Text>
+                        ) : (
+                          market.options.map((option) => {
+                            console.log('Rendering option:', option);
+                            const isSelected = selectedBets.some(
+                              bet => bet.id === option.id
+                            );
+                            
+                            // Format the option label
+                            const formatOptionLabel = () => {
+                              const optionName = option.name?.toUpperCase() || '';
+                              const line = option.line || '';
+                              
+                              if (optionName.includes('OVER')) {
+                                return `Más de ${line}`;
+                              }
+                              if (optionName.includes('UNDER')) {
+                                return `Menos de ${line}`;
+                              }
+                              // Fallback to original format
+                              return option.description || `${option.name}${line ? ` ${line}` : ''}`;
+                            };
+                            
+                            return (
+                              <TouchableOpacity
+                                key={option.id}
+                                style={[
+                                  styles.betOption,
+                                  isSelected && styles.betOptionSelected,
+                                ]}
+                                activeOpacity={0.8}
+                                onPress={() =>
+                                  handleAdditionalBet(option.id, option.name, option.odd, market.type)
+                                }
+                              >
+                                <Text
+                                  style={[
+                                    styles.betOptionLabel,
+                                    isSelected && styles.betOptionLabelSelected,
+                                  ]}
+                                >
+                                  {formatOptionLabel()}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.betOptionOdds,
+                                    isSelected && styles.betOptionOddsSelected,
+                                  ]}
+                                >
+                                  {option.odd.toFixed(2)}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+            )}
           </View>
         </View>
 
         {isLargeScreen && (
           <View style={styles.betSlipContainer}>
-            <BetSlip
+            <UnifiedBetPanel
               bets={selectedBets}
               onRemoveBet={handleRemoveBet}
               onPlaceBet={handlePlaceBet}
-              showHeader
             />
           </View>
         )}
@@ -466,11 +622,10 @@ export default function MatchDetailScreen() {
 
       {!isLargeScreen && selectedBets.length > 0 && (
         <View style={styles.mobileBetSlipContainer}>
-          <BetSlip
+          <UnifiedBetPanel
             bets={selectedBets}
             onRemoveBet={handleRemoveBet}
             onPlaceBet={handlePlaceBet}
-            showHeader={false}
           />
         </View>
       )}
@@ -698,6 +853,15 @@ const createStyles = (colors: ThemeColors) =>
       fontWeight: fontWeight.semibold,
       color: colors.foreground,
       marginBottom: spacing.md,
+    },
+    noMarketsContainer: {
+      padding: spacing.xl,
+      alignItems: "center",
+    },
+    noMarketsText: {
+      fontSize: fontSize.sm,
+      color: colors.muted.foreground,
+      textAlign: "center",
     },
     betOptionsGrid: {
       flexDirection: "row",

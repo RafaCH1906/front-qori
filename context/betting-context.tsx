@@ -47,14 +47,22 @@ export function BettingProvider({ children }: { children: React.ReactNode }) {
           !(existingBet.matchId === bet.matchId && existingBet.betType === bet.betType)
       );
 
+      // CRITICAL: Preserve the optionId (bet.id) from the backend
+      // Do NOT generate a new ID with Date.now() - use the actual optionId
+      const newBet: Bet = {
+        id: bet.id!, // bet.id is the optionId from the backend
+        match: bet.match,
+        type: bet.type,
+        odds: bet.odds,
+        matchId: bet.matchId,
+        betType: bet.betType,
+        label: bet.label,
+      };
+
+      console.log('[BettingContext] Adding bet:', newBet);
+
       // Add the new bet
-      return [
-        ...filteredBets,
-        {
-          id: bet.id ?? Date.now(),
-          ...bet,
-        },
-      ];
+      return [...filteredBets, newBet];
     });
   }, []);
 

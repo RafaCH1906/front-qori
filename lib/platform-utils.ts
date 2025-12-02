@@ -1,9 +1,7 @@
-import { Platform, Dimensions } from 'react-native';
+import { Platform, Dimensions, PixelRatio } from 'react-native';
 
-/**
- * Detects if the current device is a mobile device
- * This is more reliable than just checking window dimensions
- */
+export type DeviceType = 'mobile' | 'tablet' | 'desktop';
+
 export function isMobileDevice(): boolean {
   // For native platforms, always return true for mobile
   if (Platform.OS === 'ios' || Platform.OS === 'android') {
@@ -50,6 +48,23 @@ export function isMobileDevice(): boolean {
 }
 
 /**
+ * Determines the current device type based on width and platform
+ */
+export function getDeviceType(width: number): DeviceType {
+  const isMobile = isMobileDevice();
+
+  if (isMobile) {
+    // Distinguish between mobile phone and tablet based on width
+    return width >= 768 ? 'tablet' : 'mobile';
+  }
+
+  // For web/desktop
+  if (width < 768) return 'mobile';
+  if (width < 1024) return 'tablet';
+  return 'desktop';
+}
+
+/**
  * Gets the appropriate breakpoint for desktop/mobile layout
  * Takes into account whether we're on a mobile device
  */
@@ -70,13 +85,6 @@ export function getResponsiveBreakpoint(): number {
  * Hook-friendly function to determine if should use large screen layout
  */
 export function shouldUseLargeScreenLayout(windowWidth: number): boolean {
-  const isMobile = isMobileDevice();
-
-  // Mobile devices should never use large screen layout
-  if (isMobile) {
-    return false;
-  }
-
-  // For desktop, check window width against breakpoint
-  return windowWidth >= 900;
+  const deviceType = getDeviceType(windowWidth);
+  return deviceType === 'desktop';
 }

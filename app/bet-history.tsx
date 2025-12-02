@@ -29,6 +29,7 @@ interface BetSelection {
   id: number;
   odds: number;
   state: string;
+  marketType: string;
   option: {
     id: number;
     name: string;
@@ -62,27 +63,108 @@ export default function BetHistoryScreen() {
 
     try {
       setIsLoading(true);
-      const data = await getBetHistory(user.id);
+      const data = await getBetHistory(); // Ya no necesita userId
 
+      console.log("Raw bet history data:", data);
+      
       // Map API response to local Bet interface
-      const mappedBets: Bet[] = data.map((apiBet: any) => ({
-        id: apiBet.id,
-        amount: apiBet.totalStake,
-        date: apiBet.placedAt,
-        state: apiBet.state || apiBet.status,
-        betType: apiBet.selections.length > 1 ? "COMBINED" : "SINGLE",
-        totalOdds: apiBet.totalOdds,
-        selections: apiBet.selections.map((sel: any) => ({
-          id: sel.id,
-          odds: sel.odds,
-          state: sel.state || "PENDING",
-          option: {
-            id: sel.option?.id || sel.optionId,
-            name: sel.option?.name || "Unknown",
-            description: sel.option?.description || "",
+      const mappedBets: Bet[] = data.map((apiBet: any) => {
+        console.log("Mapping bet:", JSON.stringify(apiBet, null, 2));
+        
+        const selections = (apiBet.selections || []).map((sel: any) => {
+          console.log("Selection data:", JSON.stringify(sel, null, 2));
+          
+          // Extract option name and line
+          let optionName = sel.option?.name || sel.optionName || "";
+          const line = sel.option?.line || null;
+          
+          // Format option name to be more readable with line value
+          if (optionName.includes("OVER")) {
+            if (line !== null) {
+              optionName = `Más de ${line}`;
+            } else {
+              const value = optionName.replace("OVER_", "").replace("_", ".");
+              optionName = `Más de ${value}`;
+            }
+          } else if (optionName.includes("UNDER")) {
+            if (line !== null) {
+              optionName = `Menos de ${line}`;
+            } else {
+              const value = optionName.replace("UNDER_", "").replace("_", ".");
+              optionName = `Menos de ${value}`;
+            }
+          } else if (optionName.includes("_")) {
+            optionName = optionName.replace(/_/g, " ");
           }
-        }))
-      }));
+          
+          // Build description from market
+          let marketDescription = "";
+          if (sel.option?.market) {
+            const market = sel.option.market;
+            const marketDesc = market.description || market.type || "";
+            
+            // Translate common market types
+            if (marketDesc.includes("TOTAL_GOALS") || marketDesc.toLowerCase().includes("gol")) {
+              marketDescription = "Total de Goles";
+            } else if (marketDesc.includes("TOTAL_CARDS") || marketDesc.toLowerCase().includes("tarjeta")) {
+              marketDescription = "Total de Tarjetas";
+            } else if (marketDesc.includes("TOTAL_CORNERS") || marketDesc.toLowerCase().includes("corner")) {
+              marketDescription = "Total de Córners";
+            } else if (marketDesc.includes("TOTAL_SHOTS") || marketDesc.toLowerCase().includes("disparo")) {
+              marketDescription = "Total de Disparos";
+            } else {
+              marketDescription = marketDesc;
+            }
+          }
+          
+          // Get match and league info
+          let matchInfo = "";
+          let leagueInfo = "";
+          
+          if (sel.option?.market?.match) {
+            const match = sel.option.market.match;
+            const teamLocal = match.homeTeam?.name || match.teamLocal?.name || "Local";
+            const teamAway = match.awayTeam?.name || match.teamAway?.name || "Visitante";
+            matchInfo = `${teamLocal} vs ${teamAway}`;
+            
+            if (match.league?.name) {
+              leagueInfo = match.league.name;
+            }
+          }
+          
+          // Build full description
+          let fullDescription = "";
+          if (leagueInfo && matchInfo) {
+            fullDescription = `${leagueInfo} • ${matchInfo}`;
+          } else if (matchInfo) {
+            fullDescription = matchInfo;
+          } else {
+            fullDescription = "Partido sin información";
+          }
+          
+          return {
+            id: sel.id,
+            odds: sel.oddsTaken || sel.odds || sel.odd || 0,
+            state: sel.result || sel.state || sel.status || "PENDING",
+            marketType: marketDescription || "Mercado",
+            option: {
+              id: sel.option?.id || sel.optionId || 0,
+              name: optionName || "Opción",
+              description: fullDescription,
+            }
+          };
+        });
+        
+        return {
+          id: apiBet.id,
+          amount: apiBet.totalStake || apiBet.amount || 0,
+          date: apiBet.date || apiBet.placedAt || apiBet.createdAt || new Date().toISOString(),
+          state: apiBet.state || apiBet.status || "PENDING",
+          betType: selections.length > 1 ? "COMBINED" : "SINGLE",
+          totalOdds: apiBet.totalOdds || apiBet.odds || 0,
+          selections: selections
+        };
+      });
 
       setBets(mappedBets);
     } catch (error) {
@@ -282,23 +364,55 @@ export default function BetHistoryScreen() {
 
               {/* Bet Selections */}
               <View style={styles.selectionsContainer}>
-                {bet.selections.map((selection, index) => (
-                  <View key={selection.id} style={styles.selectionItem}>
-                    <View style={styles.selectionInfo}>
-                      <Text style={styles.selectionDescription}>
-                        {selection.option.description}
-                      </Text>
-                      <Text style={styles.selectionName}>
-                        {selection.option.name}
-                      </Text>
+                <Text style={styles.selectionsTitle}>
+                  {bet.betType === "COMBINED" ? "Selecciones:" : "Selección:"}
+                </Text>
+                {bet.selections.length === 0 ? (
+                  <Text style={styles.noSelectionsText}>No hay información de selecciones</Text>
+                ) : (
+                  bet.selections.map((selection, index) => (
+                    <View key={selection.id} style={styles.selectionItem}>
+                      <View style={styles.selectionInfo}>
+                        {/* Match and League */}
+                        <Text style={styles.selectionDescription}>
+                          {selection.option.description || "Partido sin información"}
+                        </Text>
+                        {/* Market Type and Option */}
+                        <View style={styles.selectionDetailsRow}>
+                          <Text style={styles.selectionLabel}>{selection.marketType}:</Text>
+                          <Text style={styles.selectionName}>
+                            {selection.option.name}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.selectionRight}>
+                        <Text style={styles.selectionOddsLabel}>Cuota</Text>
+                        <Text style={styles.selectionOdds}>{selection.odds.toFixed(2)}</Text>
+                      </View>
                     </View>
-                    <Text style={styles.selectionOdds}>{selection.odds.toFixed(2)}</Text>
-                  </View>
-                ))}
+                  ))
+                )}
               </View>
 
               {/* Bet Summary */}
               <View style={styles.betSummary}>
+                {/* Result Banner for Won/Lost bets */}
+                {bet.state !== "PENDING" && (
+                  <View style={[
+                    styles.resultBanner,
+                    { backgroundColor: getStatusColor(bet.state) + "15" }
+                  ]}>
+                    <Ionicons 
+                      name={getStatusIcon(bet.state) as any} 
+                      size={20} 
+                      color={getStatusColor(bet.state)} 
+                    />
+                    <Text style={[styles.resultBannerText, { color: getStatusColor(bet.state) }]}>
+                      Resultado final: {getStatusLabel(bet.state)}
+                    </Text>
+                  </View>
+                )}
+                
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Cuota Total:</Text>
                   <Text style={styles.summaryValue}>{bet.totalOdds.toFixed(2)}</Text>
@@ -309,13 +423,14 @@ export default function BetHistoryScreen() {
                 </View>
                 <View style={[styles.summaryRow, styles.summaryRowFinal]}>
                   <Text style={styles.summaryFinalLabel}>
-                    {bet.state === "WON" ? "Ganancia:" : "Ganancia Potencial:"}
+                    {bet.state === "WON" ? "Ganancia Obtenida:" : bet.state === "LOST" ? "Perdido:" : "Ganancia Potencial:"}
                   </Text>
                   <Text style={[
                     styles.summaryFinalValue,
-                    bet.state === "WON" && { color: colors.accent.DEFAULT }
+                    bet.state === "WON" && { color: colors.accent.DEFAULT },
+                    bet.state === "LOST" && { color: colors.destructive.DEFAULT }
                   ]}>
-                    S/ {(bet.amount * bet.totalOdds).toFixed(2)}
+                    S/ {bet.state === "LOST" ? bet.amount.toFixed(2) : (bet.amount * bet.totalOdds).toFixed(2)}
                   </Text>
                 </View>
               </View>
@@ -484,27 +599,64 @@ const createStyles = (colors: ThemeColors) =>
       borderTopColor: colors.border,
       paddingTop: spacing.md,
       marginBottom: spacing.md,
+      gap: spacing.xs,
+    },
+    selectionsTitle: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.bold,
+      color: colors.foreground,
+      marginBottom: spacing.xs,
     },
     selectionItem: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "space-between",
       paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.sm,
+      backgroundColor: colors.background,
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     selectionInfo: {
       flex: 1,
+      gap: spacing.xs,
     },
     selectionDescription: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.medium,
+      color: colors.foreground,
+    },
+    noSelectionsText: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
+      fontStyle: "italic" as const,
+      marginTop: spacing.xs,
+    },
+    selectionDetailsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+    },
+    selectionLabel: {
       fontSize: fontSize.xs,
       color: colors.muted.foreground,
     },
     selectionName: {
-      fontSize: fontSize.sm,
+      fontSize: fontSize.xs,
       fontWeight: fontWeight.semibold,
-      color: colors.foreground,
+      color: colors.accent.DEFAULT,
+    },
+    selectionRight: {
+      alignItems: "flex-end",
+      gap: 2,
+    },
+    selectionOddsLabel: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
     },
     selectionOdds: {
-      fontSize: fontSize.base,
+      fontSize: fontSize.lg,
       fontWeight: fontWeight.bold,
       color: colors.accent.DEFAULT,
     },
@@ -514,6 +666,18 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: borderRadius.md,
       gap: spacing.xs,
       marginBottom: spacing.md,
+    },
+    resultBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      padding: spacing.md,
+      borderRadius: borderRadius.md,
+      marginBottom: spacing.sm,
+    },
+    resultBannerText: {
+      fontSize: fontSize.base,
+      fontWeight: fontWeight.bold,
     },
     summaryRow: {
       flexDirection: "row",
