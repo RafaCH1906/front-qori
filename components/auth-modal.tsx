@@ -219,84 +219,86 @@ export default function AuthModal({
   const handleSubmit = async () => {
     setGeneralError("");
 
-    // LOCATION VALIDATION - Peru only
-    if (permissionStatus === 'denied') {
-      Alert.alert(
-        " Ubicación Requerida",
-        "QORIBET está disponible únicamente en Perú por regulaciones de juego responsable.\n\n" +
-        "Para continuar, necesitamos verificar tu ubicación. Por favor, habilita los permisos de ubicación en:" +
-        "\n\n📱 Ajustes → Aplicaciones → QORIBET → Permisos → Ubicación → Permitir",
-        [
-          {
-            text: "Abrir Configuración",
-            onPress: () => {
-              requestPermission();
-              showToast("Habilita el permiso de ubicación y vuelve a intentarlo", "info");
-            }
-          },
-          { text: "Cancelar", style: "cancel" }
-        ]
-      );
-      logValidationAttempt('location', false, { reason: 'permission_denied', mode });
-      return;
-    }
-
-    if (permissionStatus === 'undetermined') {
-      Alert.alert(
-        " Verificación de Ubicación",
-        "QORIBET está disponible únicamente en Perú.\n\n" +
-        "Necesitamos verificar tu ubicación para cumplir con las regulaciones de juego responsable.\n\n" +
-        "✓ Tu ubicación solo se usa para verificar que estás en Perú\n" +
-        "✓ No compartimos tu ubicación con terceros\n" +
-        "✓ Puedes desactivarla después del registro",
-        [
-          {
-            text: "Permitir Ubicación",
-            onPress: async () => {
-              const status = await requestPermission();
-              if (status === 'granted') {
-                showToast("Verificando ubicación...", "info");
-                // Wait a bit for location context to update
-                setTimeout(() => handleSubmit(), 1000);
-              } else {
-                showToast("Permiso de ubicación denegado", "error");
+    // LOCATION VALIDATION - Peru only (ONLY FOR REGISTRATION)
+    if (mode === "register") {
+      if (permissionStatus === 'denied') {
+        Alert.alert(
+          " Ubicación Requerida",
+          "QORIBET está disponible únicamente en Perú por regulaciones de juego responsable.\n\n" +
+          "Para continuar, necesitamos verificar tu ubicación. Por favor, habilita los permisos de ubicación en:" +
+          "\n\n📱 Ajustes → Aplicaciones → QORIBET → Permisos → Ubicación → Permitir",
+          [
+            {
+              text: "Abrir Configuración",
+              onPress: () => {
+                requestPermission();
+                showToast("Habilita el permiso de ubicación y vuelve a intentarlo", "info");
               }
+            },
+            { text: "Cancelar", style: "cancel" }
+          ]
+        );
+        logValidationAttempt('location', false, { reason: 'permission_denied', mode });
+        return;
+      }
+
+      if (permissionStatus === 'undetermined') {
+        Alert.alert(
+          " Verificación de Ubicación",
+          "QORIBET está disponible únicamente en Perú.\n\n" +
+          "Necesitamos verificar tu ubicación para cumplir con las regulaciones de juego responsable.\n\n" +
+          "✓ Tu ubicación solo se usa para verificar que estás en Perú\n" +
+          "✓ No compartimos tu ubicación con terceros\n" +
+          "✓ Puedes desactivarla después del registro",
+          [
+            {
+              text: "Permitir Ubicación",
+              onPress: async () => {
+                const status = await requestPermission();
+                if (status === 'granted') {
+                  showToast("Verificando ubicación...", "info");
+                  // Wait a bit for location context to update
+                  setTimeout(() => handleSubmit(), 1000);
+                } else {
+                  showToast("Permiso de ubicación denegado", "error");
+                }
+              }
+            },
+            { text: "Cancelar", style: "cancel" }
+          ]
+        );
+        return;
+      }
+
+      if (locationLoading) {
+        showToast("Verificando ubicación...", "info");
+        return;
+      }
+
+      // Temporarily disabled for testing
+      // if (isInPeru === false) {
+      //   Alert.alert(
+      //     "Servicio No Disponible",
+      //     "Lo sentimos, QORIBET está disponible únicamente en Perú. Tu ubicación actual indica que no te encuentras en el territorio peruano.",
+      //     [{ text: "Entendido" }]
+      //   );
+      //   logValidationAttempt('location', false, { reason: 'outside_peru', mode });
+      //   return;
+      // }
+
+      if (isInPeru === null) {
+        Alert.alert(
+          "Error de Ubicación",
+          "No pudimos verificar tu ubicación. Por favor, asegúrate de tener GPS activado e internet disponible.",
+          [{
+            text: "Reintentar", onPress: async () => {
+              await requestPermission();
             }
           },
-          { text: "Cancelar", style: "cancel" }
-        ]
-      );
-      return;
-    }
-
-    if (locationLoading) {
-      showToast("Verificando ubicación...", "info");
-      return;
-    }
-
-    // Temporarily disabled for testing
-    // if (isInPeru === false) {
-    //   Alert.alert(
-    //     "Servicio No Disponible",
-    //     "Lo sentimos, QORIBET está disponible únicamente en Perú. Tu ubicación actual indica que no te encuentras en el territorio peruano.",
-    //     [{ text: "Entendido" }]
-    //   );
-    //   logValidationAttempt('location', false, { reason: 'outside_peru', mode });
-    //   return;
-    // }
-
-    if (isInPeru === null) {
-      Alert.alert(
-        "Error de Ubicación",
-        "No pudimos verificar tu ubicación. Por favor, asegúrate de tener GPS activado e internet disponible.",
-        [{
-          text: "Reintentar", onPress: async () => {
-            await requestPermission();
-          }
-        },
-        { text: "Cancelar", style: "cancel" }]
-      );
-      return;
+          { text: "Cancelar", style: "cancel" }]
+        );
+        return;
+      }
     }
 
     // Location validated - now validate form
