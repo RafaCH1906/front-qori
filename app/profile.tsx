@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, useWindowDimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, useWindowDimensions, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -109,18 +109,23 @@ export default function ProfileScreen() {
                             <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
                         </TouchableOpacity>
 
-                        <View style={styles.menuDivider} />
+                        {/* Only show "Volver al Inicio" on mobile (web has back arrow already) */}
+                        {Platform.OS !== 'web' && (
+                            <>
+                                <View style={styles.menuDivider} />
 
-                        <TouchableOpacity
-                            style={styles.menuItem}
-                            onPress={() => router.push("/")}
-                        >
-                            <View style={styles.menuItemLeft}>
-                                <Ionicons name="home-outline" size={isDesktop ? 28 : 24} color={colors.primary.DEFAULT} />
-                                <Text style={styles.menuItemText}>Volver al Inicio</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
-                        </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.menuItem}
+                                    onPress={() => router.push("/")}
+                                >
+                                    <View style={styles.menuItemLeft}>
+                                        <Ionicons name="home-outline" size={isDesktop ? 28 : 24} color={colors.primary.DEFAULT} />
+                                        <Text style={styles.menuItemText}>Volver al Inicio</Text>
+                                    </View>
+                                    <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </Card>
 
                     {/* Logout Button */}

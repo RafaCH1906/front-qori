@@ -82,11 +82,11 @@ export default function BetSlip({
 
     switch (bet.type) {
       case "home":
-        return "1 (Home Win)";
+        return "1 (Victoria Local)";
       case "draw":
-        return "X (Draw)";
+        return "X (Empate)";
       case "away":
-        return "2 (Away Win)";
+        return "2 (Victoria Visitante)";
       default:
         return bet.type;
     }
@@ -98,15 +98,15 @@ export default function BetSlip({
   const getCategoryLabel = (betType: string) => {
     switch (betType) {
       case "result":
-        return "Match Result";
+        return "Resultado del Partido";
       case "goals":
-        return "Goals";
+        return "Goles";
       case "cards":
-        return "Cards";
+        return "Tarjetas";
       case "corners":
         return "Corners";
       case "shots":
-        return "Shots";
+        return "Tiros";
       default:
         return betType;
     }
@@ -198,7 +198,7 @@ export default function BetSlip({
                   style={[styles.freeBetToggle, useFreeBet && styles.freeBetToggleActive]}
                   onPress={() => {
                     setUseFreeBet(!useFreeBet);
-                    if (!useFreeBet) setStake("0"); // Clear stake when using free bet
+                    if (!useFreeBet) setStake(""); // Clear stake when using free bet
                     else setStake("10"); // Restore default
                   }}
                 >
@@ -502,11 +502,11 @@ const createStyles = (colors: ThemeColors) =>
 
 const getBadgeStyles = (betType: string, colors: ThemeColors) => {
   const map: Record<string, string> = {
-    result: colors.accent.DEFAULT,
-    goals: colors.primary.DEFAULT,
-    cards: colors.destructive.DEFAULT,
-    corners: colors.secondary.DEFAULT,
-    shots: colors.ring,
+    result: "#3B82F6", // Blue for "Resultado del Partido"
+    goals: "#10B981", // Green for "Goles"
+    cards: "#F59E0B", // Amber/Orange for "Tarjetas"
+    corners: "#8B5CF6", // Purple for "Corners"
+    shots: "#EF4444", // Red for "Tiros"
   };
 
   const baseColor = map[betType] ?? colors.muted.DEFAULT;
