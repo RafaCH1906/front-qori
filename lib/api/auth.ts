@@ -41,3 +41,15 @@ export const getCurrentUser = async () => {
         throw error;
     }
 };
+
+export const verifyEmail = async (token: string) => {
+    try {
+        console.log('[AUTH API] Verifying email with token');
+        const { data } = await api.get(`/auth/verify-email?token=${token}`);
+        console.log('[AUTH API] Email verification successful');
+        return data;
+    } catch (error: any) {
+        console.error('[AUTH API] Email verification failed:', error.response?.data || error.message);
+        throw error;
+    }
+};
