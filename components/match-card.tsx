@@ -18,6 +18,7 @@ interface MatchCardProps {
     homeTeam: string;
     awayTeam: string;
     time: string;
+    date?: string;
     odds: { home: number; draw: number; away: number };
     localOptionId?: number;
     drawOptionId?: number;
@@ -74,14 +75,32 @@ export default function MatchCard({
     });
   };
 
+  const formatMatchDate = (dateString?: string): string => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+    } catch {
+      return "";
+    }
+  };
+
   const renderTeamInfo = (name: string, logo?: string, alignRight = false) => (
     <View style={[styles.teamBlock, alignRight && styles.teamBlockRight]}>
-      {logo ? (
-        <Image source={{ uri: logo }} style={styles.teamLogo} resizeMode="contain" />
-      ) : (
-        <View style={styles.logoPlaceholder}>
-          <Text style={styles.logoPlaceholderText}>{name?.charAt(0)?.toUpperCase() ?? "?"}</Text>
-        </View>
+      {!alignRight && (
+        <>
+          {logo ? (
+            <Image source={{ uri: logo }} style={styles.teamLogo} resizeMode="contain" />
+          ) : (
+            <View style={styles.logoPlaceholder}>
+              <Text style={styles.logoPlaceholderText}>{name?.charAt(0)?.toUpperCase() ?? "?"}</Text>
+            </View>
+          )}
+        </>
       )}
       <Text
         style={[styles.teamText, alignRight && styles.teamTextRight]}
@@ -90,6 +109,17 @@ export default function MatchCard({
       >
         {name}
       </Text>
+      {alignRight && (
+        <>
+          {logo ? (
+            <Image source={{ uri: logo }} style={[styles.teamLogo, styles.teamLogoRight]} resizeMode="contain" />
+          ) : (
+            <View style={[styles.logoPlaceholder, styles.logoPlaceholderRight]}>
+              <Text style={styles.logoPlaceholderText}>{name?.charAt(0)?.toUpperCase() ?? "?"}</Text>
+            </View>
+          )}
+        </>
+      )}
     </View>
   );
 
@@ -103,7 +133,12 @@ export default function MatchCard({
         <Text style={styles.timeText}>{match.time}</Text>
         <View style={styles.teamsContainer}>
           {renderTeamInfo(match.homeTeam, match.homeLogo)}
-          <Text style={styles.vsText}>vs</Text>
+          <View style={styles.vsContainer}>
+            {match.date && (
+              <Text style={styles.dateText}>{formatMatchDate(match.date)}</Text>
+            )}
+            <Text style={styles.vsText}>vs</Text>
+          </View>
           {renderTeamInfo(match.awayTeam, match.awayLogo, true)}
         </View>
       </TouchableOpacity>
@@ -219,6 +254,8 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
     },
     teamTextRight: {
       textAlign: "right",
+      marginLeft: 0,
+      marginRight: spacing.sm,
     },
     teamBlock: {
       flex: 1,
@@ -233,6 +270,10 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
       height: variant === 'large' ? 40 : 32,
       marginRight: spacing.sm,
     },
+    teamLogoRight: {
+      marginRight: 0,
+      marginLeft: spacing.sm,
+    },
     logoPlaceholder: {
       width: variant === 'large' ? 40 : 32,
       height: variant === 'large' ? 40 : 32,
@@ -242,14 +283,27 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
       justifyContent: "center",
       marginRight: spacing.sm,
     },
+    logoPlaceholderRight: {
+      marginRight: 0,
+      marginLeft: spacing.sm,
+    },
     logoPlaceholderText: {
       color: colors.muted.foreground,
       fontWeight: fontWeight.bold,
     },
+    vsContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      marginHorizontal: spacing.sm,
+    },
+    dateText: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
+      marginBottom: spacing.xs,
+    },
     vsText: {
       fontSize: fontSize.xs,
       color: colors.muted.foreground,
-      marginHorizontal: spacing.sm,
     },
     oddsContainer: {
       flexDirection: "row",

@@ -19,6 +19,7 @@ export type Match = {
   homeTeam: string;
   awayTeam: string;
   time: string;
+  date?: string;
   odds: { home: number; draw: number; away: number };
   homeLogo?: string;
   awayLogo?: string;
