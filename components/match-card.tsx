@@ -119,24 +119,29 @@ export default function MatchCard({
     return null;
   }, [markets]);
 
-  const renderTeamInfo = (name: string, logo?: string, alignRight = false) => (
-    <View style={[styles.teamBlock, alignRight && styles.teamBlockRight]}>
-      {logo ? (
-        <Image source={{ uri: logo }} style={styles.teamLogo} resizeMode="contain" />
-      ) : (
-        <View style={styles.logoPlaceholder}>
-          <Text style={styles.logoPlaceholderText}>{name?.charAt(0)?.toUpperCase() ?? "?"}</Text>
-        </View>
-      )}
-      <Text
-        style={[styles.teamText, alignRight && styles.teamTextRight]}
-        numberOfLines={1}
-        ellipsizeMode="tail"
-      >
-        {name}
-      </Text>
-    </View>
-  );
+  const renderTeamInfo = (name: string, logo?: string, alignRight = false) => {
+    const logoElement = logo ? (
+      <Image source={{ uri: logo }} style={[styles.teamLogo, alignRight && styles.teamLogoRight]} resizeMode="contain" />
+    ) : (
+      <View style={[styles.logoPlaceholder, alignRight && styles.logoPlaceholderRight]}>
+        <Text style={styles.logoPlaceholderText}>{name?.charAt(0)?.toUpperCase() ?? "?"}</Text>
+      </View>
+    );
+
+    return (
+      <View style={[styles.teamBlock, alignRight && styles.teamBlockRight]}>
+        {!alignRight && logoElement}
+        <Text
+          style={[styles.teamText, alignRight && styles.teamTextRight]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {name}
+        </Text>
+        {alignRight && logoElement}
+      </View>
+    );
+  };
 
   return (
     <Card style={styles.card}>
@@ -317,6 +322,8 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
     },
     teamTextRight: {
       textAlign: "right",
+      marginLeft: 0,
+      marginRight: spacing.sm,
     },
     teamBlock: {
       flex: 1,
@@ -331,6 +338,10 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
       height: variant === 'large' ? 40 : 32,
       marginRight: spacing.sm,
     },
+    teamLogoRight: {
+      marginRight: 0,
+      marginLeft: spacing.sm,
+    },
     logoPlaceholder: {
       width: variant === 'large' ? 40 : 32,
       height: variant === 'large' ? 40 : 32,
@@ -339,6 +350,10 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
       alignItems: "center",
       justifyContent: "center",
       marginRight: spacing.sm,
+    },
+    logoPlaceholderRight: {
+      marginRight: 0,
+      marginLeft: spacing.sm,
     },
     logoPlaceholderText: {
       color: colors.muted.foreground,
