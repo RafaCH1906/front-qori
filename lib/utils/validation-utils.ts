@@ -154,12 +154,12 @@ export const validatePassword = (password: string) => {
         upper: /[A-Z]/.test(password),
         lower: /[a-z]/.test(password),
         number: /\d/.test(password),
-        special: /[@$!%*?&\-+#]/.test(password),
+        special: /[@$!%*?&+#]/.test(password),
         isValid: password.length >= 8 &&
             /[A-Z]/.test(password) &&
             /[a-z]/.test(password) &&
             /\d/.test(password) &&
-            /[@$!%*?&\-+#]/.test(password)
+            /[@$!%*?&+#]/.test(password)
     };
 };
 
@@ -169,23 +169,23 @@ export function validatePasswordCharacters(password: string): ValidationResult {
         return { isValid: true };
     }
 
-    // Allowed characters: a-z, A-Z, 0-9, and special chars: @$!%*?&-+#
-    const allowedPattern = /^[a-zA-Z0-9@$!%*?&\-+#]*$/;
+    // Allowed characters: a-z, A-Z, 0-9, and special chars: @$!%*?&+#
+    const allowedPattern = /^[a-zA-Z0-9@$!%*?&+#]*$/;
 
     if (!allowedPattern.test(password)) {
         // Find the first invalid character
-        const invalidChars = password.split('').filter(char => !/[a-zA-Z0-9@$!%*?&\-+#]/.test(char));
+        const invalidChars = password.split('').filter(char => !/[a-zA-Z0-9@$!%*?&+#]/.test(char));
         const uniqueInvalidChars = [...new Set(invalidChars)]; // Remove duplicates
 
         if (uniqueInvalidChars.length === 1) {
             return {
                 isValid: false,
-                error: `Carácter inválido: "${uniqueInvalidChars[0]}". Solo se permiten letras, números y los siguientes caracteres especiales: @ $ ! % * ? & - + #`
+                error: `Carácter inválido: "${uniqueInvalidChars[0]}". Solo se permiten letras, números y los siguientes caracteres especiales: @ $ ! % * ? & + #`
             };
         } else {
             return {
                 isValid: false,
-                error: `Caracteres inválidos: ${uniqueInvalidChars.map(c => `"${c}"`).join(', ')}. Solo se permiten letras, números y los siguientes caracteres especiales: @ $ ! % * ? & - + #`
+                error: `Caracteres inválidos: ${uniqueInvalidChars.map(c => `"${c}"`).join(', ')}. Solo se permiten letras, números y los siguientes caracteres especiales: @ $ ! % * ? & + #`
             };
         }
     }

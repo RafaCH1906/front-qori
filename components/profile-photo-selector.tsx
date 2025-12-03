@@ -346,7 +346,7 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     }
   };
 
-  // Editor de imagen para web
+  // Editor de imagen para web (solo recortar)
   const openWebImageEditor = (imageUrl: string) => {
     return new Promise<string>((resolve, reject) => {
       // Crear modal para el editor
@@ -366,100 +366,72 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         padding: 20px;
       `;
 
-      // Crear canvas y contexto
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-
-      // Variables para el editor
-      let scale = 1;
-      let offsetX = 0;
-      let offsetY = 0;
-      let isDragging = false;
-      let startX = 0;
-      let startY = 0;
-
-      // Configurar canvas
-      canvas.width = 400;
-      canvas.height = 400;
-      canvas.style.cssText = `
-        border: 2px solid #FDB81E;
-        border-radius: 8px;
-        cursor: move;
-        max-width: 90vw;
-        max-height: 60vh;
-      `;
-
-      const drawImage = () => {
-        if (!ctx) return;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
-        ctx.translate(offsetX, offsetY);
-        ctx.scale(scale, scale);
-
-        const imgAspect = img.width / img.height;
-        const canvasAspect = canvas.width / canvas.height;
-        let drawWidth, drawHeight, drawX, drawY;
-
-        if (imgAspect > canvasAspect) {
-          drawHeight = canvas.height / scale;
-          drawWidth = drawHeight * imgAspect;
-          drawX = (canvas.width / scale - drawWidth) / 2;
-          drawY = 0;
-        } else {
-          drawWidth = canvas.width / scale;
-          drawHeight = drawWidth / imgAspect;
-          drawX = 0;
-          drawY = (canvas.height / scale - drawHeight) / 2;
-        }
-
-        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-        ctx.restore();
-      };
-
-      img.onload = () => {
-        drawImage();
-      };
-      img.src = imageUrl;
-
-      // Controles
-      const controlsContainer = document.createElement('div');
-      controlsContainer.style.cssText = `
-        margin-top: 20px;
+      // Contenedor principal
+      const container = document.createElement('div');
+      container.style.cssText = `
         display: flex;
         flex-direction: column;
-        gap: 15px;
         align-items: center;
+        gap: 20px;
       `;
 
-      // Slider de zoom
-      const zoomContainer = document.createElement('div');
-      zoomContainer.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 10px;
+      // Instrucciones
+      const instructions = document.createElement('div');
+      instructions.style.cssText = `
+        color: white;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+      `;
+      instructions.textContent = 'Recorta tu imagen';
+
+      // Contenedor de la imagen con área de recorte
+      const cropperContainer = document.createElement('div');
+      cropperContainer.style.cssText = `
+        position: relative;
+        width: 400px;
+        height: 400px;
+        max-width: 90vw;
+        max-height: 60vh;
+        border: 2px solid #FDB81E;
+        border-radius: 8px;
+        overflow: hidden;
       `;
 
-      const zoomLabel = document.createElement('span');
-      zoomLabel.textContent = 'Zoom:';
-      zoomLabel.style.cssText = 'color: white; font-size: 14px; min-width: 50px;';
+      // Canvas para mostrar la imagen
+      const displayCanvas = document.createElement('canvas');
+      displayCanvas.width = 400;
+      displayCanvas.height = 400;
+      displayCanvas.style.cssText = `
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      `;
 
-      const zoomSlider = document.createElement('input');
-      zoomSlider.type = 'range';
-      zoomSlider.min = '1';
-      zoomSlider.max = '3';
-      zoomSlider.step = '0.1';
-      zoomSlider.value = '1';
-      zoomSlider.style.cssText = 'width: 200px;';
+      // Imagen a recortar
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
 
-      zoomSlider.oninput = (e: any) => {
-        scale = parseFloat(e.target.value);
-        drawImage();
+      img.onload = () => {
+        const ctx = displayCanvas.getContext('2d');
+        if (!ctx) return;
+
+        // Calcular dimensiones para recortar al centro manteniendo aspecto cuadrado
+        const size = Math.min(img.width, img.height);
+        const offsetX = (img.width - size) / 2;
+        const offsetY = (img.height - size) / 2;
+
+        // Dibujar imagen recortada centrada
+        ctx.drawImage(
+          img,
+          offsetX, offsetY, size, size,  // source rectangle (crop from center)
+          0, 0, 400, 400                 // destination rectangle (fill canvas)
+        );
       };
 
-      zoomContainer.appendChild(zoomLabel);
-      zoomContainer.appendChild(zoomSlider);
+      img.src = imageUrl;
+
+      cropperContainer.appendChild(displayCanvas);
 
       // Botones
       const buttonsContainer = document.createElement('div');
@@ -494,52 +466,8 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         cursor: pointer;
       `;
 
-      // Event listeners para arrastrar
-      canvas.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        startX = e.clientX - offsetX;
-        startY = e.clientY - offsetY;
-      });
-
-      canvas.addEventListener('mousemove', (e) => {
-        if (isDragging) {
-          offsetX = e.clientX - startX;
-          offsetY = e.clientY - startY;
-          drawImage();
-        }
-      });
-
-      canvas.addEventListener('mouseup', () => {
-        isDragging = false;
-      });
-
-      canvas.addEventListener('mouseleave', () => {
-        isDragging = false;
-      });
-
-      // Touch events para móvil
-      canvas.addEventListener('touchstart', (e) => {
-        isDragging = true;
-        const touch = e.touches[0];
-        startX = touch.clientX - offsetX;
-        startY = touch.clientY - offsetY;
-      });
-
-      canvas.addEventListener('touchmove', (e) => {
-        if (isDragging) {
-          const touch = e.touches[0];
-          offsetX = touch.clientX - startX;
-          offsetY = touch.clientY - startY;
-          drawImage();
-        }
-      });
-
-      canvas.addEventListener('touchend', () => {
-        isDragging = false;
-      });
-
       saveButton.onclick = () => {
-        canvas.toBlob((blob) => {
+        displayCanvas.toBlob((blob) => {
           if (blob) {
             const blobUrl = URL.createObjectURL(blob);
             document.body.removeChild(modal);
@@ -556,23 +484,13 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         reject(new Error('Edición cancelada'));
       };
 
-      // Instrucciones
-      const instructions = document.createElement('div');
-      instructions.style.cssText = `
-        color: white;
-        text-align: center;
-        margin-bottom: 15px;
-        font-size: 14px;
-      `;
-      instructions.textContent = 'Arrastra para mover • Usa el slider para hacer zoom';
-
       buttonsContainer.appendChild(saveButton);
       buttonsContainer.appendChild(cancelButton);
-      controlsContainer.appendChild(instructions);
-      controlsContainer.appendChild(canvas);
-      controlsContainer.appendChild(zoomContainer);
-      controlsContainer.appendChild(buttonsContainer);
-      modal.appendChild(controlsContainer);
+
+      container.appendChild(instructions);
+      container.appendChild(cropperContainer);
+      container.appendChild(buttonsContainer);
+      modal.appendChild(container);
       document.body.appendChild(modal);
     });
   };
