@@ -150,17 +150,19 @@ export default function BetSlip({
               styles.betTypeIndicator,
               isCombinedBet ? styles.combinedBetIndicator : styles.simpleBetIndicator
             ]}>
-              <Ionicons
-                name={isCombinedBet ? "git-merge-outline" : "document-text-outline"}
-                size={18}
-                color={isCombinedBet ? colors.accent.DEFAULT : colors.primary.DEFAULT}
-              />
-              <Text style={[
-                styles.betTypeText,
-                isCombinedBet ? styles.combinedBetText : styles.simpleBetText
-              ]}>
-                {betTypeLabel}
-              </Text>
+              <View style={styles.betTypeHeader}>
+                <Ionicons
+                  name={isCombinedBet ? "git-merge-outline" : "document-text-outline"}
+                  size={18}
+                  color={isCombinedBet ? colors.accent.DEFAULT : colors.primary.DEFAULT}
+                />
+                <Text style={[
+                  styles.betTypeText,
+                  isCombinedBet ? styles.combinedBetText : styles.simpleBetText
+                ]}>
+                  {betTypeLabel}
+                </Text>
+              </View>
               {isCombinedBet && (
                 <Text style={styles.betTypeDescription}>
                   (Todas las selecciones deben ganar)
@@ -450,15 +452,20 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.accent.DEFAULT,
     },
     betTypeIndicator: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: 'column',
+      alignItems: 'flex-start',
       padding: spacing.md,
       marginHorizontal: spacing.lg,
       marginTop: spacing.md,
       marginBottom: spacing.sm,
       borderRadius: borderRadius.lg,
-      gap: spacing.sm,
+      gap: spacing.xs,
       borderWidth: 2,
+    },
+    betTypeHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
     },
     simpleBetIndicator: {
       backgroundColor: withAlpha(colors.primary.DEFAULT, 0.1),

@@ -518,8 +518,8 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         </TouchableOpacity>
       </View>
 
-      {/* Botón de eliminar foto (solo si hay foto actual) */}
-      {user?.profilePhotoUrl && (
+      {/* Botón de eliminar foto (solo si hay foto actual y no es web) */}
+      {user?.profilePhotoUrl && Platform.OS !== 'web' && (
         <TouchableOpacity
           style={[styles.deleteButton, isDesktop && styles.deleteButtonDesktop, { backgroundColor: colors.destructive.DEFAULT }]}
           onPress={deletePhoto}

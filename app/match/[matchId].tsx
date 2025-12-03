@@ -23,6 +23,7 @@ import { useTheme } from "@/context/theme-context";
 import { useBetting } from "@/context/betting-context";
 import { BET_OPTIONS, BetCategoryKey } from "@/constants/matches";
 import UnifiedBetPanel from "@/components/unified-bet-panel";
+import MobileBetSlip from "@/components/mobile-bet-slip";
 import Header from "@/components/header";
 import AuthModal from "@/components/auth-modal";
 import ForgotPasswordModal from "@/components/forgot-password-modal";
@@ -496,7 +497,9 @@ export default function MatchDetailScreen() {
                       </Text>
                     </View>
                   )}
-                  <Text style={styles.teamName}>{match.homeTeam.name}</Text>
+                  <Text style={styles.teamName} numberOfLines={2} ellipsizeMode="tail">
+                    {match.homeTeam.name}
+                  </Text>
                 </View>
               </View>
               <View style={styles.vsContainer}>
@@ -505,7 +508,7 @@ export default function MatchDetailScreen() {
               </View>
               <View style={styles.teamColumn}>
                 <View style={[styles.teamRow, styles.teamRowRight]}>
-                  <Text style={[styles.teamName, styles.teamNameRight]}>
+                  <Text style={[styles.teamName, styles.teamNameRight]} numberOfLines={2} ellipsizeMode="tail">
                     {match.awayTeam.name}
                   </Text>
                   {match.awayTeam.logo ? (
@@ -623,7 +626,9 @@ export default function MatchDetailScreen() {
               <Text style={styles.additionalBetsTitle}>Más Opciones de Apuesta</Text>
               {filteredMarkets.length === 0 ? (
                 <View style={styles.noMarketsContainer}>
-                  <Text style={styles.noMarketsText}>No hay mercados adicionales disponibles</Text>
+                  <Text style={styles.noMarketsText}>
+                    {!user ? 'Descubre todas las cuotas que tenemos iniciando sesión' : 'No hay mercados adicionales disponibles'}
+                  </Text>
                 </View>
               ) : (
                 filteredMarkets.map((market) => {
@@ -691,13 +696,11 @@ export default function MatchDetailScreen() {
       </ScrollView>
 
       {!isLargeScreen && selectedBets.length > 0 && (
-        <View style={styles.mobileBetSlipContainer}>
-          <UnifiedBetPanel
-            bets={selectedBets}
-            onRemoveBet={handleRemoveBet}
-            onPlaceBet={handlePlaceBet}
-          />
-        </View>
+        <MobileBetSlip
+          bets={selectedBets}
+          onRemoveBet={handleRemoveBet}
+          onPlaceBet={handlePlaceBet}
+        />
       )}
 
       <BetConfirmationModal
@@ -866,11 +869,13 @@ const createStyles = (colors: ThemeColors) =>
     },
     teamColumn: {
       flex: 1,
+      minWidth: 0,
     },
     teamName: {
-      fontSize: fontSize.xl,
+      fontSize: fontSize.base,
       fontWeight: fontWeight.bold,
       color: colors.foreground,
+      flex: 1,
     },
     teamNameRight: {
       textAlign: "right",
@@ -906,7 +911,8 @@ const createStyles = (colors: ThemeColors) =>
     },
     vsContainer: {
       alignItems: "center",
-      paddingHorizontal: spacing.md,
+      paddingHorizontal: spacing.xs,
+      minWidth: 60,
     },
     locationRow: {
       flexDirection: "row",
@@ -925,7 +931,7 @@ const createStyles = (colors: ThemeColors) =>
       flex: 1,
     },
     timeText: {
-      fontSize: fontSize.lg,
+      fontSize: fontSize.sm,
       fontWeight: fontWeight.semibold,
       color: colors.primary.DEFAULT,
       marginBottom: spacing.xs,
