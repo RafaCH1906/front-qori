@@ -14,7 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTheme } from '@/context/theme-context';
 import { useToast } from '@/context/toast-context';
-import { uploadProfilePhoto } from '@/lib/api/upload';
+import { uploadProfilePhoto, deleteProfilePhoto } from '@/lib/api/upload';
 import { spacing, fontSize, fontWeight, borderRadius, ThemeColors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthProvider';
 
@@ -25,7 +25,7 @@ interface ProfilePhotoSelectorProps {
 export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSelectorProps) {
   const { colors } = useTheme();
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [uploading, setUploading] = useState(false);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
@@ -284,17 +284,9 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
 
             cleanup();
 
-            // Abrir editor de imagen antes de subir
-            try {
-              const blobUrl = URL.createObjectURL(blob);
-              const editedUrl = await openWebImageEditor(blobUrl);
-              await uploadImage(editedUrl);
-            } catch (error: any) {
-              if (error.message !== 'Edición cancelada') {
-                console.error('[ProfilePhotoSelector] Editor error:', error);
-                showToast('Error al editar la imagen', 'error');
-              }
-            }
+            // Subir imagen directamente sin editor
+            const blobUrl = URL.createObjectURL(blob);
+            await uploadImage(blobUrl);
           }, 'image/jpeg', 0.8);
         };
         
@@ -346,155 +338,6 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     }
   };
 
-  // Editor de imagen para web (solo recortar)
-  const openWebImageEditor = (imageUrl: string) => {
-    return new Promise<string>((resolve, reject) => {
-      // Crear modal para el editor
-      const modal = document.createElement('div');
-      modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        padding: 20px;
-      `;
-
-      // Contenedor principal
-      const container = document.createElement('div');
-      container.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-      `;
-
-      // Instrucciones
-      const instructions = document.createElement('div');
-      instructions.style.cssText = `
-        color: white;
-        text-align: center;
-        font-size: 16px;
-        font-weight: 600;
-      `;
-      instructions.textContent = 'Recorta tu imagen';
-
-      // Contenedor de la imagen con área de recorte
-      const cropperContainer = document.createElement('div');
-      cropperContainer.style.cssText = `
-        position: relative;
-        width: 400px;
-        height: 400px;
-        max-width: 90vw;
-        max-height: 60vh;
-        border: 2px solid #FDB81E;
-        border-radius: 8px;
-        overflow: hidden;
-      `;
-
-      // Canvas para mostrar la imagen
-      const displayCanvas = document.createElement('canvas');
-      displayCanvas.width = 400;
-      displayCanvas.height = 400;
-      displayCanvas.style.cssText = `
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      `;
-
-      // Imagen a recortar
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-
-      img.onload = () => {
-        const ctx = displayCanvas.getContext('2d');
-        if (!ctx) return;
-
-        // Calcular dimensiones para recortar al centro manteniendo aspecto cuadrado
-        const size = Math.min(img.width, img.height);
-        const offsetX = (img.width - size) / 2;
-        const offsetY = (img.height - size) / 2;
-
-        // Dibujar imagen recortada centrada
-        ctx.drawImage(
-          img,
-          offsetX, offsetY, size, size,  // source rectangle (crop from center)
-          0, 0, 400, 400                 // destination rectangle (fill canvas)
-        );
-      };
-
-      img.src = imageUrl;
-
-      cropperContainer.appendChild(displayCanvas);
-
-      // Botones
-      const buttonsContainer = document.createElement('div');
-      buttonsContainer.style.cssText = `
-        display: flex;
-        gap: 15px;
-      `;
-
-      const saveButton = document.createElement('button');
-      saveButton.textContent = 'Guardar';
-      saveButton.style.cssText = `
-        padding: 12px 24px;
-        background: #FDB81E;
-        color: #1E293B;
-        border: none;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-      `;
-
-      const cancelButton = document.createElement('button');
-      cancelButton.textContent = 'Cancelar';
-      cancelButton.style.cssText = `
-        padding: 12px 24px;
-        background: #ef4444;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-      `;
-
-      saveButton.onclick = () => {
-        displayCanvas.toBlob((blob) => {
-          if (blob) {
-            const blobUrl = URL.createObjectURL(blob);
-            document.body.removeChild(modal);
-            resolve(blobUrl);
-          } else {
-            document.body.removeChild(modal);
-            reject(new Error('Error al procesar la imagen'));
-          }
-        }, 'image/jpeg', 0.9);
-      };
-
-      cancelButton.onclick = () => {
-        document.body.removeChild(modal);
-        reject(new Error('Edición cancelada'));
-      };
-
-      buttonsContainer.appendChild(saveButton);
-      buttonsContainer.appendChild(cancelButton);
-
-      container.appendChild(instructions);
-      container.appendChild(cropperContainer);
-      container.appendChild(buttonsContainer);
-      modal.appendChild(container);
-      document.body.appendChild(modal);
-    });
-  };
-
   // Seleccionar de galería
   const pickFromGallery = async () => {
     console.log('[ProfilePhotoSelector] pickFromGallery called');
@@ -524,17 +367,9 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
           return;
         }
 
-        // Abrir editor de imagen
-        try {
-          const blobUrl = URL.createObjectURL(file);
-          const editedUrl = await openWebImageEditor(blobUrl);
-          await uploadImage(editedUrl);
-        } catch (error: any) {
-          if (error.message !== 'Edición cancelada') {
-            console.error('[ProfilePhotoSelector] Editor error:', error);
-            showToast('Error al editar la imagen', 'error');
-          }
-        }
+        // Subir imagen directamente sin editor
+        const blobUrl = URL.createObjectURL(file);
+        await uploadImage(blobUrl);
       };
 
       input.click();
@@ -574,8 +409,8 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     }
   };
 
-  // Eliminar foto actual (solo actualiza localmente, no llama al backend)
-  const deletePhoto = () => {
+  // Eliminar foto actual
+  const deletePhoto = async () => {
     if (!user?.profilePhotoUrl) {
       showToast('No hay foto de perfil para eliminar', 'info');
       return;
@@ -592,10 +427,26 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => {
-            // Solo actualizar el estado local para volver a la foto por defecto
-            onPhotoUploaded('');
-            showToast('Foto de perfil eliminada', 'success');
+          onPress: async () => {
+            try {
+              setUploading(true);
+              showToast('Eliminando foto...', 'info');
+
+              // Llamar al backend para eliminar la foto
+              await deleteProfilePhoto();
+
+              // Refrescar los datos del usuario desde el servidor
+              await refreshUser();
+
+              // Actualizar el estado local para volver a la foto por defecto
+              onPhotoUploaded('');
+              showToast('Foto de perfil eliminada exitosamente', 'success');
+            } catch (error: any) {
+              console.error('[ProfilePhotoSelector] Delete error:', error);
+              showToast(error.message || 'Error al eliminar la foto', 'error');
+            } finally {
+              setUploading(false);
+            }
           },
         },
       ],
