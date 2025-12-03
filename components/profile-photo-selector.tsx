@@ -11,10 +11,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useTheme } from '@/context/theme-context';
 import { useToast } from '@/context/toast-context';
-import { uploadProfilePhoto } from '@/lib/api/upload';
+import { uploadProfilePhoto, deleteProfilePhoto } from '@/lib/api/upload';
 import { spacing, fontSize, fontWeight, borderRadius, ThemeColors } from '@/constants/theme';
+import { useAuth } from '@/context/AuthProvider';
 
 interface ProfilePhotoSelectorProps {
   onPhotoUploaded: (url: string) => void;
@@ -23,7 +25,9 @@ interface ProfilePhotoSelectorProps {
 export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSelectorProps) {
   const { colors } = useTheme();
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 
@@ -96,22 +100,53 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     return true;
   };
 
+  // Editar imagen (crop y manipulación)
+  const editImage = async (uri: string) => {
+    try {
+      if (Platform.OS === 'web') {
+        // En web, simplemente procesar directamente
+        return uri;
+      }
+
+      // En mobile, usar ImageManipulator para editar
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [
+          // La imagen ya viene recortada por allowsEditing: true
+          // Pero aquí podríamos agregar más manipulaciones si es necesario
+        ],
+        {
+          compress: 0.8,
+          format: ImageManipulator.SaveFormat.JPEG,
+        }
+      );
+
+      return result.uri;
+    } catch (error) {
+      console.error('[ProfilePhotoSelector] Edit error:', error);
+      return uri; // Si falla, usar la URI original
+    }
+  };
+
   // Subir imagen al servidor
   const uploadImage = async (uri: string) => {
     try {
       setUploading(true);
       showToast('Subiendo foto...', 'info');
 
+      // Editar/procesar imagen primero
+      const editedUri = await editImage(uri);
+
       // Determinar nombre y tipo
-      const fileName = uri.split('/').pop() || 'photo.jpg';
-      const mimeType = fileName.toLowerCase().endsWith('.png') 
-        ? 'image/png' 
+      const fileName = editedUri.split('/').pop() || 'photo.jpg';
+      const mimeType = fileName.toLowerCase().endsWith('.png')
+        ? 'image/png'
         : 'image/jpeg';
 
-      console.log('[ProfilePhotoSelector] Uploading:', { uri, fileName, mimeType });
+      console.log('[ProfilePhotoSelector] Uploading:', { uri: editedUri, fileName, mimeType });
 
       // Subir al servidor
-      const response = await uploadProfilePhoto(uri, fileName, mimeType);
+      const response = await uploadProfilePhoto(editedUri, fileName, mimeType);
 
       console.log('[ProfilePhotoSelector] Upload successful:', response);
 
@@ -170,6 +205,7 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
           max-width: 90%;
           max-height: 70vh;
           border-radius: 8px;
+          transform: scaleX(-1);
         `;
         
         const buttonsContainer = document.createElement('div');
@@ -222,8 +258,14 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
           const ctx = canvas.getContext('2d');
-          ctx?.drawImage(video, 0, 0);
-          
+
+          // Voltear horizontalmente para efecto espejo
+          if (ctx) {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0);
+          }
+
           canvas.toBlob(async (blob) => {
             if (!blob) {
               showToast('Error al capturar la foto', 'error');
@@ -278,6 +320,7 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
+        cameraType: ImagePicker.CameraType.front, // Usar cámara frontal
       });
 
       console.log('[ProfilePhotoSelector] Camera result:', result);
@@ -368,6 +411,48 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     }
   };
 
+  // Eliminar foto actual
+  const deletePhoto = async () => {
+    if (!user?.profilePhotoUrl) {
+      showToast('No hay foto de perfil para eliminar', 'info');
+      return;
+    }
+
+    Alert.alert(
+      'Eliminar Foto de Perfil',
+      '¿Estás seguro de que deseas eliminar tu foto de perfil actual?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              showToast('Eliminando foto...', 'info');
+
+              await deleteProfilePhoto();
+
+              // Notificar al componente padre con URL vacía
+              onPhotoUploaded('');
+
+              showToast('Foto de perfil eliminada exitosamente', 'success');
+            } catch (error: any) {
+              console.error('[ProfilePhotoSelector] Delete error:', error);
+              showToast(error.message || 'Error al eliminar la foto', 'error');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   // Mostrar opciones
   const showOptions = () => {
     Alert.alert(
@@ -391,12 +476,12 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     );
   };
 
-  if (uploading) {
+  if (uploading || deleting) {
     return (
       <View style={[styles.container, { backgroundColor: colors.card.DEFAULT }]}>
         <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
         <Text style={[styles.uploadingText, { color: colors.muted.foreground }]}>
-          Subiendo foto...
+          {uploading ? 'Subiendo foto...' : 'Eliminando foto...'}
         </Text>
       </View>
     );
@@ -412,7 +497,7 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         <TouchableOpacity
           style={[styles.button, isDesktop && styles.buttonDesktop, { backgroundColor: colors.primary.DEFAULT }]}
           onPress={takePhoto}
-          disabled={uploading}
+          disabled={uploading || deleting}
         >
           <Ionicons name="camera" size={isDesktop ? 28 : 24} color={colors.primary.foreground} />
           <Text style={[styles.buttonText, isDesktop && styles.buttonTextDesktop, { color: colors.primary.foreground }]}>
@@ -423,7 +508,7 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         <TouchableOpacity
           style={[styles.button, isDesktop && styles.buttonDesktop, { backgroundColor: colors.accent.DEFAULT }]}
           onPress={pickFromGallery}
-          disabled={uploading}
+          disabled={uploading || deleting}
         >
           <Ionicons name="images" size={isDesktop ? 28 : 24} color={colors.accent.foreground} />
           <Text style={[styles.buttonText, isDesktop && styles.buttonTextDesktop, { color: colors.accent.foreground }]}>
@@ -431,6 +516,20 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Botón de eliminar foto (solo si hay foto actual) */}
+      {user?.profilePhotoUrl && (
+        <TouchableOpacity
+          style={[styles.deleteButton, isDesktop && styles.deleteButtonDesktop, { backgroundColor: colors.destructive.DEFAULT }]}
+          onPress={deletePhoto}
+          disabled={uploading || deleting}
+        >
+          <Ionicons name="trash-outline" size={isDesktop ? 24 : 20} color={colors.destructive.foreground} />
+          <Text style={[styles.deleteButtonText, isDesktop && styles.deleteButtonTextDesktop, { color: colors.destructive.foreground }]}>
+            Eliminar Foto Actual
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <Text style={[styles.hint, { color: colors.muted.foreground }]}>
         Solo archivos JPG o PNG • Máximo 5MB
@@ -477,6 +576,29 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
   },
   buttonTextDesktop: {
+    fontSize: fontSize.base,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.sm,
+  },
+  deleteButtonDesktop: {
+    padding: spacing.md,
+    minHeight: 50,
+    maxWidth: 600,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  deleteButtonText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+  },
+  deleteButtonTextDesktop: {
     fontSize: fontSize.base,
   },
   hint: {
