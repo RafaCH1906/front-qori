@@ -33,7 +33,7 @@ import { placeBet, PlaceBetRequest } from "@/lib/api/bets";
 import BetConfirmationModal from "@/components/bet-confirmation-modal";
 import { shouldUseLargeScreenLayout } from "@/lib/platform-utils";
 import { getMatchById, getMarketsByMatch, getMarketOptions } from "@/lib/api/matches";
-import { MatchDTO, MarketDTO } from "@/lib/types";
+import { MatchDTO, MarketDTO, MarketOption } from "@/lib/types";
 
 export default function MatchDetailScreen() {
   const { matchId } = useLocalSearchParams();
@@ -57,6 +57,66 @@ export default function MatchDetailScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isLargeScreen = shouldUseLargeScreenLayout(width);
   const leagueLogoUri = match?.league?.logoUrl || match?.league?.logo;
+  const filteredMarkets = markets.filter((market) => {
+    const type = market.type?.toUpperCase() || "";
+    const desc = market.description?.toLowerCase() || "";
+    return !(
+      type.includes("RESULT") ||
+      desc.includes("match winner") ||
+      desc.includes("1x2")
+    );
+  });
+
+  const getMarketTitle = (market: MarketDTO) => {
+    const type = market.type?.toUpperCase() || "";
+    const desc = market.description?.toLowerCase() || "";
+
+    if (type.includes("GOALS") || type.includes("GOLES") || desc.includes("gol")) {
+      return "Total de goles";
+    }
+    if (
+      type.includes("CARDS") ||
+      type.includes("TARJETAS") ||
+      type.includes("CARD") ||
+      desc.includes("tarjeta")
+    ) {
+      return "Total de tarjetas";
+    }
+    if (
+      type.includes("CORNERS") ||
+      type.includes("CORNER") ||
+      type.includes("TIROS_DE_ESQUINA") ||
+      desc.includes("corner") ||
+      desc.includes("esquina")
+    ) {
+      return "Total de corners";
+    }
+    if (
+      type.includes("SHOTS") ||
+      type.includes("DISPAROS") ||
+      type.includes("TIROS") ||
+      desc.includes("disparo") ||
+      desc.includes("tiro")
+    ) {
+      return "Total de disparos";
+    }
+
+    return market.description || "Mercado";
+  };
+
+  const formatOptionLabel = (option: MarketOption) => {
+    const optionName = option.name?.toUpperCase() || "";
+    const line = option.line ?? "";
+
+    if (optionName.includes("OVER")) {
+      return `Más de ${line}`;
+    }
+    if (optionName.includes("UNDER")) {
+      return `Menos de ${line}`;
+    }
+
+    return option.description || `${option.name}${line ? ` ${line}` : ""}`;
+  };
 
   useEffect(() => {
     console.log("[MatchDetail] Component mounted");
@@ -468,7 +528,7 @@ export default function MatchDetailScreen() {
             <View style={styles.locationRow}>
               <Text style={styles.locationLabel}>Lugar:</Text>
               <Text style={styles.locationValue} numberOfLines={1} ellipsizeMode="tail">
-                {match.homeTeam.stadium || match.league.country || "Por confirmar"}
+                {match.homeTeam.stadium || match.homeTeam.city || match.league.country || "Por confirmar"}
               </Text>
             </View>
 
@@ -559,87 +619,26 @@ export default function MatchDetailScreen() {
             </View>
           </View>
 
-          <View style={styles.additionalBetsSection}>
-            <Text style={styles.additionalBetsTitle}>Más Opciones de Apuesta</Text>
-            {markets.length === 0 ? (
-              <View style={styles.noMarketsContainer}>
-                <Text style={styles.noMarketsText}>No hay mercados adicionales disponibles</Text>
-              </View>
-            ) : (
-              markets
-                .filter(market => {
-                  // Log each market for debugging
-                  console.log('[MatchDetail] Checking market:', {
-                    id: market.id,
-                    type: market.type,
-                    description: market.description,
-                    optionsCount: market.options?.length || 0
-                  });
-                  
-                  // Only show TOTAL markets (not team-specific ones)
-                  const desc = market.description?.toLowerCase() || '';
-                  const type = market.type?.toLowerCase() || '';
-                  const isTotal = desc.includes('total de') || desc.includes('total');
-                  
-                  const shouldShow = isTotal && (
-                    desc.includes('gol') || type.includes('goal') ||
-                    desc.includes('tarjeta') || type.includes('card') ||
-                    desc.includes('corner') || type.includes('corner') ||
-                    desc.includes('disparo') || type.includes('shot')
-                  );
-                  
-                  console.log('[MatchDetail] Market filter result:', shouldShow);
-                  return shouldShow;
-                })
-                .map((market) => {
-                  // Map market type to display title
-                  const getMarketTitle = (market: MarketDTO) => {
-                    const type = market.type?.toUpperCase() || '';
-                    const desc = market.description?.toLowerCase() || '';
-
-                    if (type.includes('GOALS') || type.includes('GOLES') || desc.includes('gol')) {
-                      return 'Total de goles';
-                    }
-                    if (type.includes('CARDS') || type.includes('TARJETAS') || type.includes('CARD') || desc.includes('tarjeta')) {
-                      return 'Total de tarjetas';
-                    }
-                    if (type.includes('CORNERS') || type.includes('CORNER') || type.includes('TIROS_DE_ESQUINA') || desc.includes('corner') || desc.includes('esquina')) {
-                      return 'Total de corners';
-                    }
-                    if (type.includes('SHOTS') || type.includes('DISPAROS') || type.includes('TIROS') || desc.includes('disparo') || desc.includes('tiro')) {
-                      return 'Total de disparos';
-                    }
-                    return market.description;
-                  };
+            <View style={styles.additionalBetsSection}>
+              <Text style={styles.additionalBetsTitle}>Más Opciones de Apuesta</Text>
+              {filteredMarkets.length === 0 ? (
+                <View style={styles.noMarketsContainer}>
+                  <Text style={styles.noMarketsText}>No hay mercados adicionales disponibles</Text>
+                </View>
+              ) : (
+                filteredMarkets.map((market) => {
+                  const marketTitle = getMarketTitle(market);
+                  const formattedOptions = market.options || [];
 
                   return (
                     <View key={market.id} style={styles.betCategoryCard}>
-                      <Text style={styles.betCategoryTitle}>{getMarketTitle(market)}</Text>
+                      <Text style={styles.betCategoryTitle}>{marketTitle}</Text>
                       <View style={styles.betOptionsGrid}>
-                        {(!market.options || market.options.length === 0) ? (
+                        {formattedOptions.length === 0 ? (
                           <Text style={styles.betCategoryTitle}>No hay opciones disponibles</Text>
                         ) : (
-                          market.options.map((option) => {
-                            console.log('Rendering option:', option);
-                            const isSelected = selectedBets.some(
-                              bet => bet.id === option.id
-                            );
-
-                            // Format the option label
-                            const formatOptionLabel = () => {
-                              const optionName = option.name?.toUpperCase() || '';
-                              const line = option.line || '';
-
-                              if (optionName.includes('OVER')) {
-                                return `Más de ${line}`;
-                              }
-                              if (optionName.includes('UNDER')) {
-                                return `Menos de ${line}`;
-                              }
-                              // Fallback to original format
-                              return option.description || `${option.name}${line ? ` ${line}` : ''}`;
-                            };
-
+                          formattedOptions.map((option) => {
+                            const isSelected = selectedBets.some((bet) => bet.id === option.id);
                             return (
                               <TouchableOpacity
                                 key={option.id}
@@ -658,7 +657,7 @@ export default function MatchDetailScreen() {
                                     isSelected && styles.betOptionLabelSelected,
                                   ]}
                                 >
-                                  {formatOptionLabel()}
+                                  {formatOptionLabel(option)}
                                 </Text>
                                 <Text
                                   style={[
@@ -676,8 +675,8 @@ export default function MatchDetailScreen() {
                     </View>
                   );
                 })
-            )}
-          </View>
+              )}
+            </View>
         </View>
 
         {isLargeScreen && (

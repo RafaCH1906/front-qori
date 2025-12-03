@@ -11,6 +11,7 @@ import {
 import { useTheme } from "@/context/theme-context";
 import { useBetting } from "@/context/betting-context";
 import { getDeviceType } from "@/lib/platform-utils";
+import { MarketDTO, MarketOption } from "@/lib/types";
 
 interface MatchCardProps {
   match: {
@@ -77,18 +78,55 @@ export default function MatchCard({
     });
   };
 
+  const handleMarketBet = (optionId: number, optionName: string, odd: number, marketType: string) => {
+    onAddBet({
+      id: optionId,
+      match: `${match.homeTeam} vs ${match.awayTeam}`,
+      type: optionName,
+      odds: odd,
+      matchId: match.id,
+      betType: marketType,
+    });
+  };
+
+  const isMarketBetSelected = (optionId: number) => {
+    return selectedBets.some((bet) => bet.id === optionId);
+  };
+
+  const previewMarket = useMemo(() => {
+    if (!markets || markets.length === 0) return null;
+
+    const goalsMarket = markets.find(
+      (market) => market.type?.toUpperCase() === "GOALS" && market.active && market.options?.length
+    );
+
+    if (!goalsMarket || !goalsMarket.options) return null;
+
+    const over25 = goalsMarket.options.find(
+      (option) => option.name === "OVER" && option.line === 2.5 && option.active
+    );
+    const under25 = goalsMarket.options.find(
+      (option) => option.name === "UNDER" && option.line === 2.5 && option.active
+    );
+
+    if (over25 && under25) {
+      return {
+        market: goalsMarket,
+        options: [over25, under25] as MarketOption[],
+      };
+    }
+
+    return null;
+  }, [markets]);
+
   const renderTeamInfo = (name: string, logo?: string, alignRight = false) => (
     <View style={[styles.teamBlock, alignRight && styles.teamBlockRight]}>
-      {!alignRight && (
-        <>
-          {logo ? (
-            <Image source={{ uri: logo }} style={styles.teamLogo} resizeMode="contain" />
-          ) : (
-            <View style={styles.logoPlaceholder}>
-              <Text style={styles.logoPlaceholderText}>{name?.charAt(0)?.toUpperCase() ?? "?"}</Text>
-            </View>
-          )}
-        </>
+      {logo ? (
+        <Image source={{ uri: logo }} style={styles.teamLogo} resizeMode="contain" />
+      ) : (
+        <View style={styles.logoPlaceholder}>
+          <Text style={styles.logoPlaceholderText}>{name?.charAt(0)?.toUpperCase() ?? "?"}</Text>
+        </View>
       )}
       <Text
         style={[styles.teamText, alignRight && styles.teamTextRight]}
@@ -97,17 +135,6 @@ export default function MatchCard({
       >
         {name}
       </Text>
-      {alignRight && (
-        <>
-          {logo ? (
-            <Image source={{ uri: logo }} style={[styles.teamLogo, styles.teamLogoRight]} resizeMode="contain" />
-          ) : (
-            <View style={[styles.logoPlaceholder, styles.logoPlaceholderRight]}>
-              <Text style={styles.logoPlaceholderText}>{name?.charAt(0)?.toUpperCase() ?? "?"}</Text>
-            </View>
-          )}
-        </>
-      )}
     </View>
   );
 
@@ -211,7 +238,6 @@ export default function MatchCard({
         </TouchableOpacity>
       </View>
 
-      {/* Market Preview - Over/Under 2.5 */}
       {previewMarket && (
         <View style={styles.previewMarketContainer}>
           <Text style={styles.previewMarketTitle}>Goles {previewMarket.options[0].line}</Text>
@@ -251,6 +277,18 @@ export default function MatchCard({
   );
 }
 
+function formatMatchDate(date?: string): string {
+  if (!date) return "";
+  try {
+    return new Date(date).toLocaleDateString("es-PE", {
+      day: "2-digit",
+      month: "short",
+    });
+  } catch {
+    return date;
+  }
+}
+
 const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'large') =>
   StyleSheet.create({
     card: {
@@ -279,8 +317,6 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
     },
     teamTextRight: {
       textAlign: "right",
-      marginLeft: 0,
-      marginRight: spacing.sm,
     },
     teamBlock: {
       flex: 1,
@@ -295,10 +331,6 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
       height: variant === 'large' ? 40 : 32,
       marginRight: spacing.sm,
     },
-    teamLogoRight: {
-      marginRight: 0,
-      marginLeft: spacing.sm,
-    },
     logoPlaceholder: {
       width: variant === 'large' ? 40 : 32,
       height: variant === 'large' ? 40 : 32,
@@ -307,10 +339,6 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
       alignItems: "center",
       justifyContent: "center",
       marginRight: spacing.sm,
-    },
-    logoPlaceholderRight: {
-      marginRight: 0,
-      marginLeft: spacing.sm,
     },
     logoPlaceholderText: {
       color: colors.muted.foreground,
@@ -329,41 +357,6 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
     vsText: {
       fontSize: fontSize.xs,
       color: colors.muted.foreground,
-    },
-    oddsContainer: {
-      flexDirection: "row",
-      gap: spacing.sm,
-      marginBottom: 0,
-    },
-    oddsButton: {
-      flex: 1,
-      borderWidth: 2,
-      borderColor: colors.border,
-      borderRadius: borderRadius.lg,
-      paddingVertical: variant === 'large' ? spacing.lg : spacing.md,
-      alignItems: "center",
-      justifyContent: 'center',
-      backgroundColor: colors.background,
-    },
-    oddsButtonSelected: {
-      backgroundColor: "#FDB81E",
-      borderColor: "#FDB81E",
-    },
-    oddsLabel: {
-      fontSize: fontSize.xs,
-      color: colors.muted.foreground,
-      marginBottom: 2,
-    },
-    oddsLabelSelected: {
-      color: "#1E293B",
-    },
-    oddsValue: {
-      fontWeight: fontWeight.bold,
-      fontSize: variant === 'large' ? fontSize.xl : fontSize.lg,
-      color: colors.primary.DEFAULT,
-    },
-    oddsValueSelected: {
-      color: "#1E293B",
     },
     previewMarketContainer: {
       marginTop: spacing.sm,
@@ -411,6 +404,41 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
       color: colors.primary.DEFAULT,
     },
     previewOptionOddSelected: {
+      color: "#1E293B",
+    },
+    oddsContainer: {
+      flexDirection: "row",
+      gap: spacing.sm,
+      marginBottom: 0,
+    },
+    oddsButton: {
+      flex: 1,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: borderRadius.lg,
+      paddingVertical: variant === 'large' ? spacing.lg : spacing.md,
+      alignItems: "center",
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+    },
+    oddsButtonSelected: {
+      backgroundColor: "#FDB81E",
+      borderColor: "#FDB81E",
+    },
+    oddsLabel: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
+      marginBottom: 2,
+    },
+    oddsLabelSelected: {
+      color: "#1E293B",
+    },
+    oddsValue: {
+      fontWeight: fontWeight.bold,
+      fontSize: variant === 'large' ? fontSize.xl : fontSize.lg,
+      color: colors.primary.DEFAULT,
+    },
+    oddsValueSelected: {
       color: "#1E293B",
     },
   });
