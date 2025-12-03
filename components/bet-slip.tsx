@@ -202,7 +202,7 @@ export default function BetSlip({
 
             <View style={styles.stakeContainer}>
               {/* Free Bet Toggle */}
-              {user?.freeBetsCount && user.freeBetsCount > 0 && (
+              {user?.freeBetsCount !== undefined && user.freeBetsCount > 0 && (
                 <TouchableOpacity
                   style={[styles.freeBetToggle, useFreeBet && styles.freeBetToggleActive]}
                   onPress={() => {
