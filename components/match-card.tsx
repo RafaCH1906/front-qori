@@ -25,6 +25,7 @@ interface MatchCardProps {
     homeLogo?: string;
     awayLogo?: string;
   };
+  markets?: MarketDTO[];
   onAddBet: (bet: any) => void;
   onOpenMatch: () => void;
   variant?: 'compact' | 'standard' | 'large';
@@ -32,6 +33,7 @@ interface MatchCardProps {
 
 export default function MatchCard({
   match,
+  markets,
   onAddBet,
   onOpenMatch,
   variant,
@@ -73,6 +75,43 @@ export default function MatchCard({
       betType: "result",
     });
   };
+
+  const handleMarketBet = (optionId: number, optionName: string, odd: number, marketType: string) => {
+    onAddBet({
+      id: optionId,
+      match: `${match.homeTeam} vs ${match.awayTeam}`,
+      type: optionName,
+      odds: odd,
+      matchId: match.id,
+      betType: marketType,
+    });
+  };
+
+  const isMarketBetSelected = (optionId: number) => {
+    return selectedBets.some((bet) => bet.id === optionId);
+  };
+
+  // Get preview market (Goals Over/Under 2.5)
+  const getPreviewMarket = () => {
+    if (!markets || markets.length === 0) return null;
+
+    const goalsMarket = markets.find(m => m.type === 'GOALS' && m.active);
+    if (!goalsMarket || !goalsMarket.options) return null;
+
+    // Find Over 2.5 and Under 2.5
+    const over25 = goalsMarket.options.find(opt => opt.name === 'OVER' && opt.line === 2.5 && opt.active);
+    const under25 = goalsMarket.options.find(opt => opt.name === 'UNDER' && opt.line === 2.5 && opt.active);
+
+    if (over25 && under25) {
+      return {
+        market: goalsMarket,
+        options: [over25, under25]
+      };
+    }
+    return null;
+  };
+
+  const previewMarket = getPreviewMarket();
 
   const renderTeamInfo = (name: string, logo?: string, alignRight = false) => (
     <View style={[styles.teamBlock, alignRight && styles.teamBlockRight]}>
@@ -187,6 +226,43 @@ export default function MatchCard({
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Market Preview - Over/Under 2.5 */}
+      {previewMarket && (
+        <View style={styles.previewMarketContainer}>
+          <Text style={styles.previewMarketTitle}>Goles {previewMarket.options[0].line}</Text>
+          <View style={styles.previewOptionsContainer}>
+            {previewMarket.options.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                onPress={() => handleMarketBet(option.id, option.name, option.odd, previewMarket.market.type)}
+                style={[
+                  styles.previewOption,
+                  isMarketBetSelected(option.id) && styles.previewOptionSelected,
+                ]}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.previewOptionLabel,
+                    isMarketBetSelected(option.id) && styles.previewOptionLabelSelected,
+                  ]}
+                >
+                  {option.name === 'OVER' ? '+' : '-'}
+                </Text>
+                <Text
+                  style={[
+                    styles.previewOptionOdd,
+                    isMarketBetSelected(option.id) && styles.previewOptionOddSelected,
+                  ]}
+                >
+                  {option.odd.toFixed(2)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
     </Card>
   );
 }
@@ -284,6 +360,54 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
       color: colors.primary.DEFAULT,
     },
     oddsValueSelected: {
+      color: "#1E293B",
+    },
+    previewMarketContainer: {
+      marginTop: spacing.sm,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    previewMarketTitle: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
+      marginBottom: spacing.xs,
+      fontWeight: fontWeight.medium,
+    },
+    previewOptionsContainer: {
+      flexDirection: 'row',
+      gap: spacing.xs,
+    },
+    previewOption: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: borderRadius.md,
+      paddingVertical: spacing.xs,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+      minHeight: 44,
+    },
+    previewOptionSelected: {
+      backgroundColor: "#FDB81E",
+      borderColor: "#FDB81E",
+    },
+    previewOptionLabel: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
+      fontWeight: fontWeight.semibold,
+      marginBottom: 2,
+    },
+    previewOptionLabelSelected: {
+      color: "#1E293B",
+    },
+    previewOptionOdd: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.bold,
+      color: colors.primary.DEFAULT,
+    },
+    previewOptionOddSelected: {
       color: "#1E293B",
     },
   });
