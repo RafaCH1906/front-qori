@@ -96,16 +96,25 @@ export default function BetSlip({
     getBadgeStyles(betType, colors);
 
   const getCategoryLabel = (betType: string) => {
-    switch (betType) {
+    // Normalizar a minúsculas para comparación
+    const normalizedType = betType?.toLowerCase() || '';
+
+    switch (normalizedType) {
       case "result":
+      case "resultado":
         return "Resultado del Partido";
       case "goals":
+      case "goles":
         return "Goles";
       case "cards":
+      case "tarjetas":
         return "Tarjetas";
       case "corners":
+      case "tiros_de_esquina":
         return "Corners";
       case "shots":
+      case "tiros":
+      case "disparos":
         return "Tiros";
       default:
         return betType;
@@ -501,15 +510,24 @@ const createStyles = (colors: ThemeColors) =>
   });
 
 const getBadgeStyles = (betType: string, colors: ThemeColors) => {
+  // Normalizar a minúsculas
+  const normalizedType = betType?.toLowerCase() || '';
+
   const map: Record<string, string> = {
     result: "#3B82F6", // Blue for "Resultado del Partido"
+    resultado: "#3B82F6",
     goals: "#10B981", // Green for "Goles"
+    goles: "#10B981",
     cards: "#F59E0B", // Amber/Orange for "Tarjetas"
+    tarjetas: "#F59E0B",
     corners: "#8B5CF6", // Purple for "Corners"
+    tiros_de_esquina: "#8B5CF6",
     shots: "#EF4444", // Red for "Tiros"
+    tiros: "#EF4444",
+    disparos: "#EF4444",
   };
 
-  const baseColor = map[betType] ?? colors.muted.DEFAULT;
+  const baseColor = map[normalizedType] ?? colors.muted.DEFAULT;
   return {
     backgroundColor: withAlpha(baseColor, 0.15),
     borderColor: withAlpha(baseColor, 0.4),

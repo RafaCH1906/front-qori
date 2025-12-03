@@ -14,7 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTheme } from '@/context/theme-context';
 import { useToast } from '@/context/toast-context';
-import { uploadProfilePhoto, deleteProfilePhoto } from '@/lib/api/upload';
+import { uploadProfilePhoto } from '@/lib/api/upload';
 import { spacing, fontSize, fontWeight, borderRadius, ThemeColors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthProvider';
 
@@ -27,7 +27,6 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
   const { showToast } = useToast();
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 
@@ -100,21 +99,20 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     return true;
   };
 
-  // Editar imagen (crop y manipulación)
-  const editImage = async (uri: string) => {
+  // Procesar y comprimir imagen
+  // Nota: La edición (crop/rotate) ya se hace con allowsEditing: true en launchCameraAsync/launchImageLibraryAsync
+  // Esta función solo comprime la imagen antes de subirla
+  const processImage = async (uri: string) => {
     try {
       if (Platform.OS === 'web') {
-        // En web, simplemente procesar directamente
+        // En web, retornar la URI directamente
         return uri;
       }
 
-      // En mobile, usar ImageManipulator para editar
+      // En mobile, comprimir la imagen para optimizar la subida
       const result = await ImageManipulator.manipulateAsync(
         uri,
-        [
-          // La imagen ya viene recortada por allowsEditing: true
-          // Pero aquí podríamos agregar más manipulaciones si es necesario
-        ],
+        [], // Sin manipulaciones adicionales, solo compresión
         {
           compress: 0.8,
           format: ImageManipulator.SaveFormat.JPEG,
@@ -123,7 +121,7 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
 
       return result.uri;
     } catch (error) {
-      console.error('[ProfilePhotoSelector] Edit error:', error);
+      console.error('[ProfilePhotoSelector] Processing error:', error);
       return uri; // Si falla, usar la URI original
     }
   };
@@ -134,19 +132,19 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
       setUploading(true);
       showToast('Subiendo foto...', 'info');
 
-      // Editar/procesar imagen primero
-      const editedUri = await editImage(uri);
+      // Procesar y comprimir imagen antes de subir
+      const processedUri = await processImage(uri);
 
       // Determinar nombre y tipo
-      const fileName = editedUri.split('/').pop() || 'photo.jpg';
+      const fileName = processedUri.split('/').pop() || 'photo.jpg';
       const mimeType = fileName.toLowerCase().endsWith('.png')
         ? 'image/png'
         : 'image/jpeg';
 
-      console.log('[ProfilePhotoSelector] Uploading:', { uri: editedUri, fileName, mimeType });
+      console.log('[ProfilePhotoSelector] Uploading:', { uri: processedUri, fileName, mimeType });
 
       // Subir al servidor
-      const response = await uploadProfilePhoto(editedUri, fileName, mimeType);
+      const response = await uploadProfilePhoto(processedUri, fileName, mimeType);
 
       console.log('[ProfilePhotoSelector] Upload successful:', response);
 
@@ -272,23 +270,31 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
               cleanup();
               return;
             }
-            
+
             console.log('[ProfilePhotoSelector] Photo captured:', {
               size: blob.size,
               type: blob.type,
             });
-            
+
             // Validar
             if (!validateImage(URL.createObjectURL(blob), blob.size, blob.type)) {
               cleanup();
               return;
             }
-            
+
             cleanup();
-            
-            // Crear blob URL y subir
-            const blobUrl = URL.createObjectURL(blob);
-            await uploadImage(blobUrl);
+
+            // Abrir editor de imagen antes de subir
+            try {
+              const blobUrl = URL.createObjectURL(blob);
+              const editedUrl = await openWebImageEditor(blobUrl);
+              await uploadImage(editedUrl);
+            } catch (error: any) {
+              if (error.message !== 'Edición cancelada') {
+                console.error('[ProfilePhotoSelector] Editor error:', error);
+                showToast('Error al editar la imagen', 'error');
+              }
+            }
           }, 'image/jpeg', 0.8);
         };
         
@@ -316,11 +322,11 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: 'images' as any,
-        allowsEditing: true,
-        aspect: [1, 1],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true, // Muestra editor nativo para recortar/mover la imagen
+        aspect: [1, 1], // Proporción cuadrada 1:1 para fotos de perfil
         quality: 0.8,
-        cameraType: ImagePicker.CameraType.front, // Usar cámara frontal
+        cameraType: ImagePicker.CameraType.front, // Usar cámara frontal con efecto espejo
       });
 
       console.log('[ProfilePhotoSelector] Camera result:', result);
@@ -340,40 +346,279 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     }
   };
 
+  // Editor de imagen para web
+  const openWebImageEditor = (imageUrl: string) => {
+    return new Promise<string>((resolve, reject) => {
+      // Crear modal para el editor
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+      `;
+
+      // Crear canvas y contexto
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      // Variables para el editor
+      let scale = 1;
+      let offsetX = 0;
+      let offsetY = 0;
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
+
+      // Configurar canvas
+      canvas.width = 400;
+      canvas.height = 400;
+      canvas.style.cssText = `
+        border: 2px solid #FDB81E;
+        border-radius: 8px;
+        cursor: move;
+        max-width: 90vw;
+        max-height: 60vh;
+      `;
+
+      const drawImage = () => {
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
+        ctx.scale(scale, scale);
+
+        const imgAspect = img.width / img.height;
+        const canvasAspect = canvas.width / canvas.height;
+        let drawWidth, drawHeight, drawX, drawY;
+
+        if (imgAspect > canvasAspect) {
+          drawHeight = canvas.height / scale;
+          drawWidth = drawHeight * imgAspect;
+          drawX = (canvas.width / scale - drawWidth) / 2;
+          drawY = 0;
+        } else {
+          drawWidth = canvas.width / scale;
+          drawHeight = drawWidth / imgAspect;
+          drawX = 0;
+          drawY = (canvas.height / scale - drawHeight) / 2;
+        }
+
+        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+        ctx.restore();
+      };
+
+      img.onload = () => {
+        drawImage();
+      };
+      img.src = imageUrl;
+
+      // Controles
+      const controlsContainer = document.createElement('div');
+      controlsContainer.style.cssText = `
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        align-items: center;
+      `;
+
+      // Slider de zoom
+      const zoomContainer = document.createElement('div');
+      zoomContainer.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      `;
+
+      const zoomLabel = document.createElement('span');
+      zoomLabel.textContent = 'Zoom:';
+      zoomLabel.style.cssText = 'color: white; font-size: 14px; min-width: 50px;';
+
+      const zoomSlider = document.createElement('input');
+      zoomSlider.type = 'range';
+      zoomSlider.min = '1';
+      zoomSlider.max = '3';
+      zoomSlider.step = '0.1';
+      zoomSlider.value = '1';
+      zoomSlider.style.cssText = 'width: 200px;';
+
+      zoomSlider.oninput = (e: any) => {
+        scale = parseFloat(e.target.value);
+        drawImage();
+      };
+
+      zoomContainer.appendChild(zoomLabel);
+      zoomContainer.appendChild(zoomSlider);
+
+      // Botones
+      const buttonsContainer = document.createElement('div');
+      buttonsContainer.style.cssText = `
+        display: flex;
+        gap: 15px;
+      `;
+
+      const saveButton = document.createElement('button');
+      saveButton.textContent = 'Guardar';
+      saveButton.style.cssText = `
+        padding: 12px 24px;
+        background: #FDB81E;
+        color: #1E293B;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+      `;
+
+      const cancelButton = document.createElement('button');
+      cancelButton.textContent = 'Cancelar';
+      cancelButton.style.cssText = `
+        padding: 12px 24px;
+        background: #ef4444;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+      `;
+
+      // Event listeners para arrastrar
+      canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX - offsetX;
+        startY = e.clientY - offsetY;
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+          offsetX = e.clientX - startX;
+          offsetY = e.clientY - startY;
+          drawImage();
+        }
+      });
+
+      canvas.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        isDragging = false;
+      });
+
+      // Touch events para móvil
+      canvas.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        const touch = e.touches[0];
+        startX = touch.clientX - offsetX;
+        startY = touch.clientY - offsetY;
+      });
+
+      canvas.addEventListener('touchmove', (e) => {
+        if (isDragging) {
+          const touch = e.touches[0];
+          offsetX = touch.clientX - startX;
+          offsetY = touch.clientY - startY;
+          drawImage();
+        }
+      });
+
+      canvas.addEventListener('touchend', () => {
+        isDragging = false;
+      });
+
+      saveButton.onclick = () => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const blobUrl = URL.createObjectURL(blob);
+            document.body.removeChild(modal);
+            resolve(blobUrl);
+          } else {
+            document.body.removeChild(modal);
+            reject(new Error('Error al procesar la imagen'));
+          }
+        }, 'image/jpeg', 0.9);
+      };
+
+      cancelButton.onclick = () => {
+        document.body.removeChild(modal);
+        reject(new Error('Edición cancelada'));
+      };
+
+      // Instrucciones
+      const instructions = document.createElement('div');
+      instructions.style.cssText = `
+        color: white;
+        text-align: center;
+        margin-bottom: 15px;
+        font-size: 14px;
+      `;
+      instructions.textContent = 'Arrastra para mover • Usa el slider para hacer zoom';
+
+      buttonsContainer.appendChild(saveButton);
+      buttonsContainer.appendChild(cancelButton);
+      controlsContainer.appendChild(instructions);
+      controlsContainer.appendChild(canvas);
+      controlsContainer.appendChild(zoomContainer);
+      controlsContainer.appendChild(buttonsContainer);
+      modal.appendChild(controlsContainer);
+      document.body.appendChild(modal);
+    });
+  };
+
   // Seleccionar de galería
   const pickFromGallery = async () => {
     console.log('[ProfilePhotoSelector] pickFromGallery called');
-    
+
     // En web, usar input file HTML directamente
     if (Platform.OS === 'web') {
       console.log('[ProfilePhotoSelector] Using web file input');
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/jpeg,image/jpg,image/png';
-      
+
       input.onchange = async (e: any) => {
         const file = e.target.files[0];
         if (!file) {
           console.log('[ProfilePhotoSelector] No file selected');
           return;
         }
-        
+
         console.log('[ProfilePhotoSelector] File selected:', {
           name: file.name,
           size: file.size,
           type: file.type,
         });
-        
+
         // Validar
         if (!validateImage(URL.createObjectURL(file), file.size, file.type)) {
           return;
         }
-        
-        // Crear blob URL para subir
-        const blobUrl = URL.createObjectURL(file);
-        await uploadImage(blobUrl);
+
+        // Abrir editor de imagen
+        try {
+          const blobUrl = URL.createObjectURL(file);
+          const editedUrl = await openWebImageEditor(blobUrl);
+          await uploadImage(editedUrl);
+        } catch (error: any) {
+          if (error.message !== 'Edición cancelada') {
+            console.error('[ProfilePhotoSelector] Editor error:', error);
+            showToast('Error al editar la imagen', 'error');
+          }
+        }
       };
-      
+
       input.click();
       return;
     }
@@ -388,9 +633,9 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     try {
       console.log('[ProfilePhotoSelector] Launching image library...');
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images' as any,
-        allowsEditing: true,
-        aspect: [1, 1],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true, // Muestra editor nativo para recortar/mover la imagen después de seleccionarla
+        aspect: [1, 1], // Proporción cuadrada 1:1 para fotos de perfil
         quality: 0.8,
       });
 
@@ -411,8 +656,8 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     }
   };
 
-  // Eliminar foto actual
-  const deletePhoto = async () => {
+  // Eliminar foto actual (solo actualiza localmente, no llama al backend)
+  const deletePhoto = () => {
     if (!user?.profilePhotoUrl) {
       showToast('No hay foto de perfil para eliminar', 'info');
       return;
@@ -429,23 +674,10 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              setDeleting(true);
-              showToast('Eliminando foto...', 'info');
-
-              await deleteProfilePhoto();
-
-              // Notificar al componente padre con URL vacía
-              onPhotoUploaded('');
-
-              showToast('Foto de perfil eliminada exitosamente', 'success');
-            } catch (error: any) {
-              console.error('[ProfilePhotoSelector] Delete error:', error);
-              showToast(error.message || 'Error al eliminar la foto', 'error');
-            } finally {
-              setDeleting(false);
-            }
+          onPress: () => {
+            // Solo actualizar el estado local para volver a la foto por defecto
+            onPhotoUploaded('');
+            showToast('Foto de perfil eliminada', 'success');
           },
         },
       ],
@@ -476,12 +708,12 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
     );
   };
 
-  if (uploading || deleting) {
+  if (uploading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.card.DEFAULT }]}>
         <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
         <Text style={[styles.uploadingText, { color: colors.muted.foreground }]}>
-          {uploading ? 'Subiendo foto...' : 'Eliminando foto...'}
+          Subiendo foto...
         </Text>
       </View>
     );
@@ -497,7 +729,7 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         <TouchableOpacity
           style={[styles.button, isDesktop && styles.buttonDesktop, { backgroundColor: colors.primary.DEFAULT }]}
           onPress={takePhoto}
-          disabled={uploading || deleting}
+          disabled={uploading}
         >
           <Ionicons name="camera" size={isDesktop ? 28 : 24} color={colors.primary.foreground} />
           <Text style={[styles.buttonText, isDesktop && styles.buttonTextDesktop, { color: colors.primary.foreground }]}>
@@ -508,7 +740,7 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         <TouchableOpacity
           style={[styles.button, isDesktop && styles.buttonDesktop, { backgroundColor: colors.accent.DEFAULT }]}
           onPress={pickFromGallery}
-          disabled={uploading || deleting}
+          disabled={uploading}
         >
           <Ionicons name="images" size={isDesktop ? 28 : 24} color={colors.accent.foreground} />
           <Text style={[styles.buttonText, isDesktop && styles.buttonTextDesktop, { color: colors.accent.foreground }]}>
@@ -522,7 +754,7 @@ export default function ProfilePhotoSelector({ onPhotoUploaded }: ProfilePhotoSe
         <TouchableOpacity
           style={[styles.deleteButton, isDesktop && styles.deleteButtonDesktop, { backgroundColor: colors.destructive.DEFAULT }]}
           onPress={deletePhoto}
-          disabled={uploading || deleting}
+          disabled={uploading}
         >
           <Ionicons name="trash-outline" size={isDesktop ? 24 : 20} color={colors.destructive.foreground} />
           <Text style={[styles.deleteButtonText, isDesktop && styles.deleteButtonTextDesktop, { color: colors.destructive.foreground }]}>
