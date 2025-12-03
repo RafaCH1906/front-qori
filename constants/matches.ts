@@ -20,6 +20,8 @@ export type Match = {
   awayTeam: string;
   time: string;
   odds: { home: number; draw: number; away: number };
+  homeLogo?: string;
+  awayLogo?: string;
   localOptionId?: number;
   drawOptionId?: number;
   awayOptionId?: number;

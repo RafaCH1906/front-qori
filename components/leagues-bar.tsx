@@ -13,7 +13,7 @@ import { useTheme } from "@/context/theme-context";
 import { spacing, borderRadius, fontSize, fontWeight, ThemeColors } from "@/constants/theme";
 
 interface LeaguesBarProps {
-    onLeagueSelect?: (league: League | null) => void;
+    onLeagueSelect?: (leagueId: number | null) => void;
     selectedLeagueId?: number | null;
 }
 
@@ -54,6 +54,10 @@ export default function LeaguesBar({ onLeagueSelect, selectedLeagueId }: Leagues
         return null;
     }
 
+    const handleSelect = (leagueId: number | null) => {
+        onLeagueSelect?.(leagueId);
+    };
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Select a League</Text>
@@ -68,7 +72,7 @@ export default function LeaguesBar({ onLeagueSelect, selectedLeagueId }: Leagues
                         styles.button,
                         selectedLeagueId === null ? styles.buttonActive : styles.buttonInactive,
                     ]}
-                    onPress={() => onLeagueSelect?.(null)}
+                    onPress={() => handleSelect(null)}
                 >
                     <Text
                         style={[
@@ -82,19 +86,22 @@ export default function LeaguesBar({ onLeagueSelect, selectedLeagueId }: Leagues
 
                 {/* League Buttons */}
                 {leagues.map((league) => {
-                    const isSelected = selectedLeagueId === league.id;
+                    const leagueId = league.id;
+                    const isSelected = selectedLeagueId === leagueId;
+                    const logoUri = league.logoUrl || league.logo;
+
                     return (
                         <TouchableOpacity
-                            key={league.id}
+                            key={`${league.id}-${leagueId}`}
                             style={[
                                 styles.button,
                                 isSelected ? styles.buttonActive : styles.buttonInactive,
                             ]}
-                            onPress={() => onLeagueSelect?.(league)}
+                            onPress={() => handleSelect(leagueId)}
                         >
-                            {league.logo ? (
+                            {logoUri ? (
                                 <Image
-                                    source={{ uri: league.logo }}
+                                    source={{ uri: logoUri }}
                                     style={styles.icon}
                                     resizeMode="contain"
                                 />

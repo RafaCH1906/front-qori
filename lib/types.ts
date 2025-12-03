@@ -19,6 +19,8 @@ export interface MatchDTO {
     league: LeagueDTO;
     date: string;
     state: string;
+    homeLogo?: string;
+    awayLogo?: string;
     homegoals?: number;
     awaygoals?: number;
     homecards?: number;
