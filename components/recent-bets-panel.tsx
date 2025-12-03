@@ -86,14 +86,14 @@ export default function RecentBetsPanel({ showInPanel = false }: RecentBetsPanel
           
           // Format option name to be more readable with line value
           if (optionName.includes("OVER")) {
-            if (line !== null) {
+            if (line !== null && line !== 0) {
               optionName = `Más de ${line}`;
             } else {
               const value = optionName.replace("OVER_", "").replace("_", ".");
               optionName = `Más de ${value}`;
             }
           } else if (optionName.includes("UNDER")) {
-            if (line !== null) {
+            if (line !== null && line !== 0) {
               optionName = `Menos de ${line}`;
             } else {
               const value = optionName.replace("UNDER_", "").replace("_", ".");
