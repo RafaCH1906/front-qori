@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
     View,
     Text,
@@ -8,6 +8,7 @@ import {
     TouchableOpacity,
     ActivityIndicator,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { League, getLeagues } from "@/lib/api/leagues";
 import { useTheme } from "@/context/theme-context";
 import { spacing, borderRadius, fontSize, fontWeight, ThemeColors } from "@/constants/theme";
@@ -21,8 +22,13 @@ export default function LeaguesBar({ onLeagueSelect, selectedLeagueId }: Leagues
     const [leagues, setLeagues] = useState<League[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showLeftArrow, setShowLeftArrow] = useState(false);
+    const [showRightArrow, setShowRightArrow] = useState(false);
+    const [currentScrollPosition, setCurrentScrollPosition] = useState(0);
     const { colors } = useTheme();
     const styles = createStyles(colors);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const SCROLL_AMOUNT = 300; // Amount to scroll in pixels
 
     useEffect(() => {
         fetchLeagues();
@@ -58,68 +64,123 @@ export default function LeaguesBar({ onLeagueSelect, selectedLeagueId }: Leagues
         onLeagueSelect?.(leagueId);
     };
 
+    const handleScroll = (event: any) => {
+        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+        const scrollPosition = contentOffset.x;
+        const maxScrollPosition = contentSize.width - layoutMeasurement.width;
+
+        // Update current scroll position
+        setCurrentScrollPosition(scrollPosition);
+
+        // Show left arrow if scrolled right
+        setShowLeftArrow(scrollPosition > 10);
+        // Show right arrow if not at the end
+        setShowRightArrow(scrollPosition < maxScrollPosition - 10);
+    };
+
+    const handleScrollLeft = () => {
+        const newPosition = Math.max(0, currentScrollPosition - SCROLL_AMOUNT);
+        scrollViewRef.current?.scrollTo({ x: newPosition, animated: true });
+    };
+
+    const handleScrollRight = () => {
+        const newPosition = currentScrollPosition + SCROLL_AMOUNT;
+        scrollViewRef.current?.scrollTo({ x: newPosition, animated: true });
+    };
+
+    const handleContentSizeChange = (width: number, height: number) => {
+        // Check if content is wider than the container
+        setShowRightArrow(width > 0);
+    };
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Select a League</Text>
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-            >
-                {/* All Leagues Button */}
-                <TouchableOpacity
-                    style={[
-                        styles.button,
-                        selectedLeagueId === null ? styles.buttonActive : styles.buttonInactive,
-                    ]}
-                    onPress={() => handleSelect(null)}
-                >
-                    <Text
-                        style={[
-                            styles.buttonText,
-                            selectedLeagueId === null ? styles.textActive : styles.textInactive,
-                        ]}
+            <View style={styles.scrollContainer}>
+                {/* Left Arrow */}
+                {showLeftArrow && (
+                    <TouchableOpacity
+                        style={[styles.arrowButton, styles.leftArrow]}
+                        onPress={handleScrollLeft}
                     >
-                        All Leagues
-                    </Text>
-                </TouchableOpacity>
+                        <Ionicons name="chevron-back" size={24} color={colors.foreground} />
+                    </TouchableOpacity>
+                )}
 
-                {/* League Buttons */}
-                {leagues.map((league) => {
-                    const leagueId = league.id;
-                    const isSelected = selectedLeagueId === leagueId;
-                    const logoUri = league.logoUrl || league.logo;
-
-                    return (
-                        <TouchableOpacity
-                            key={`${league.id}-${leagueId}`}
+                <ScrollView
+                    ref={scrollViewRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                    onScroll={handleScroll}
+                    onContentSizeChange={handleContentSizeChange}
+                    scrollEventThrottle={16}
+                >
+                    {/* All Leagues Button */}
+                    <TouchableOpacity
+                        style={[
+                            styles.button,
+                            selectedLeagueId === null ? styles.buttonActive : styles.buttonInactive,
+                        ]}
+                        onPress={() => handleSelect(null)}
+                    >
+                        <Text
                             style={[
-                                styles.button,
-                                isSelected ? styles.buttonActive : styles.buttonInactive,
+                                styles.buttonText,
+                                selectedLeagueId === null ? styles.textActive : styles.textInactive,
                             ]}
-                            onPress={() => handleSelect(leagueId)}
                         >
-                            {logoUri ? (
-                                <Image
-                                    source={{ uri: logoUri }}
-                                    style={styles.icon}
-                                    resizeMode="contain"
-                                />
-                            ) : (
-                                <Text style={styles.emoji}>🏆</Text>
-                            )}
-                            <Text
+                            All Leagues
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* League Buttons */}
+                    {leagues.map((league) => {
+                        const leagueId = league.id;
+                        const isSelected = selectedLeagueId === leagueId;
+                        const logoUri = league.logoUrl || league.logo;
+
+                        return (
+                            <TouchableOpacity
+                                key={`${league.id}-${leagueId}`}
                                 style={[
-                                    styles.buttonText,
-                                    isSelected ? styles.textActive : styles.textInactive,
+                                    styles.button,
+                                    isSelected ? styles.buttonActive : styles.buttonInactive,
                                 ]}
+                                onPress={() => handleSelect(leagueId)}
                             >
-                                {league.name}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                })}
-            </ScrollView>
+                                {logoUri ? (
+                                    <Image
+                                        source={{ uri: logoUri }}
+                                        style={styles.icon}
+                                        resizeMode="contain"
+                                    />
+                                ) : (
+                                    <Text style={styles.emoji}>🏆</Text>
+                                )}
+                                <Text
+                                    style={[
+                                        styles.buttonText,
+                                        isSelected ? styles.textActive : styles.textInactive,
+                                    ]}
+                                >
+                                    {league.name}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+
+                {/* Right Arrow */}
+                {showRightArrow && (
+                    <TouchableOpacity
+                        style={[styles.arrowButton, styles.rightArrow]}
+                        onPress={handleScrollRight}
+                    >
+                        <Ionicons name="chevron-forward" size={24} color={colors.foreground} />
+                    </TouchableOpacity>
+                )}
+            </View>
         </View>
     );
 }
@@ -141,9 +202,37 @@ const createStyles = (colors: ThemeColors) =>
             marginBottom: spacing.md,
             paddingHorizontal: spacing.md,
         },
+        scrollContainer: {
+            position: "relative",
+            flexDirection: "row",
+            alignItems: "center",
+        },
         scrollContent: {
             paddingHorizontal: spacing.md,
             gap: spacing.sm,
+        },
+        arrowButton: {
+            position: "absolute",
+            zIndex: 10,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: colors.background,
+            justifyContent: "center",
+            alignItems: "center",
+            shadowColor: "#000",
+            shadowOpacity: 0.2,
+            shadowOffset: { width: 0, height: 2 },
+            shadowRadius: 4,
+            elevation: 5,
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        leftArrow: {
+            left: spacing.xs,
+        },
+        rightArrow: {
+            right: spacing.xs,
         },
         button: {
             flexDirection: "row",

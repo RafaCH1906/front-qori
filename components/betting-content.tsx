@@ -119,6 +119,7 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
       homeTeam: m.homeTeam?.name ?? "",
       awayTeam: m.awayTeam?.name ?? "",
       time: formatMatchTime(m.date),
+      date: m.date, // Pass the full date
       odds: {
         home: m.localOdds ?? 0,
         draw: m.drawOdds ?? 0,

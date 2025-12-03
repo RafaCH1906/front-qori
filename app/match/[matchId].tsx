@@ -23,6 +23,9 @@ import { useTheme } from "@/context/theme-context";
 import { useBetting } from "@/context/betting-context";
 import { BET_OPTIONS, BetCategoryKey } from "@/constants/matches";
 import UnifiedBetPanel from "@/components/unified-bet-panel";
+import Header from "@/components/header";
+import AuthModal from "@/components/auth-modal";
+import ForgotPasswordModal from "@/components/forgot-password-modal";
 import { useAuth } from "@/context/AuthProvider";
 import { useBalance } from "@/context/balance-context";
 import { useToast } from "@/context/toast-context";
@@ -48,6 +51,9 @@ export default function MatchDetailScreen() {
   const [markets, setMarkets] = useState<MarketDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isLargeScreen = shouldUseLargeScreenLayout(width);
   const leagueLogoUri = match?.league?.logoUrl || match?.league?.logo;
@@ -149,6 +155,11 @@ export default function MatchDetailScreen() {
     }
   };
 
+  const handleAuthOpen = (mode: "login" | "register") => {
+    setAuthMode(mode);
+    setIsAuthOpen(true);
+  };
+
   const isBetSelected = (type: "home" | "draw" | "away") => {
     if (!match) return false;
     return selectedBets.some(
@@ -169,7 +180,7 @@ export default function MatchDetailScreen() {
   const handleBet = (type: "home" | "draw" | "away") => {
     if (!match) return;
     if (!user) {
-      showToast("Por favor, inicia sesión para realizar apuestas", "error");
+      handleAuthOpen("login");
       return;
     }
 
@@ -212,7 +223,7 @@ export default function MatchDetailScreen() {
   const handleAdditionalBet = (optionId: number, optionName: string, optionOdd: number, marketType: string) => {
     if (!match) return;
     if (!user) {
-      showToast("Por favor, inicia sesión para realizar apuestas", "error");
+      handleAuthOpen("login");
       return;
     }
 
@@ -313,7 +324,11 @@ export default function MatchDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
+        <Header
+          onLoginClick={() => handleAuthOpen("login")}
+          onRegisterClick={() => handleAuthOpen("register")}
+        />
+        <View style={styles.subHeader}>
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backButton}
@@ -322,7 +337,6 @@ export default function MatchDetailScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Detalles del Partido</Text>
-          <View style={styles.placeholder} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent.DEFAULT} />
@@ -335,7 +349,11 @@ export default function MatchDetailScreen() {
   if (error || !match) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
+        <Header
+          onLoginClick={() => handleAuthOpen("login")}
+          onRegisterClick={() => handleAuthOpen("register")}
+        />
+        <View style={styles.subHeader}>
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backButton}
@@ -344,7 +362,6 @@ export default function MatchDetailScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Detalles del Partido</Text>
-          <View style={styles.placeholder} />
         </View>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color={colors.destructive.DEFAULT} />
@@ -363,7 +380,11 @@ export default function MatchDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
+      <Header
+        onLoginClick={() => handleAuthOpen("login")}
+        onRegisterClick={() => handleAuthOpen("register")}
+      />
+      <View style={styles.subHeader}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
@@ -372,7 +393,6 @@ export default function MatchDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalles del Partido</Text>
-        <View style={styles.placeholder} />
       </View>
 
       <ScrollView
@@ -692,6 +712,24 @@ export default function MatchDetailScreen() {
         balance={balance}
         isLoading={isPlacingBet}
       />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        mode={authMode}
+        onSwitchMode={(mode) => setAuthMode(mode)}
+        onForgotPassword={() => {
+          setIsAuthOpen(false);
+          setIsForgotPasswordOpen(true);
+        }}
+      />
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -702,18 +740,16 @@ const createStyles = (colors: ThemeColors) =>
       flex: 1,
       backgroundColor: colors.background,
     },
-    header: {
+    subHeader: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      backgroundColor: colors.card.DEFAULT,
+      backgroundColor: colors.background,
     },
     backButton: {
       padding: spacing.xs,
+      marginRight: spacing.sm,
     },
     headerTitle: {
       fontSize: fontSize.lg,
