@@ -7,6 +7,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -49,6 +50,7 @@ export default function MatchDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isLargeScreen = shouldUseLargeScreenLayout(width);
+  const leagueLogoUri = match?.league?.logoUrl || match?.league?.logo;
 
   useEffect(() => {
     console.log("[MatchDetail] Component mounted");
@@ -338,7 +340,7 @@ export default function MatchDetailScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
             activeOpacity={0.7}
-          >
+            >
             <Ionicons name="arrow-back" size={24} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Detalles del Partido</Text>
@@ -355,7 +357,7 @@ export default function MatchDetailScreen() {
             <Text style={styles.retryButtonText}>Volver</Text>
           </TouchableOpacity>
         </View>
-        </SafeAreaView>
+      </SafeAreaView>
     );
   }
 
@@ -382,23 +384,72 @@ export default function MatchDetailScreen() {
         <View style={styles.contentWrapper}>
           <View style={styles.matchCard}>
             <View style={styles.matchHeader}>
-              <Text style={styles.leagueText}>{match.league.name}</Text>
+              <View style={styles.leagueInfo}>
+                {leagueLogoUri && (
+                  <Image
+                    source={{ uri: leagueLogoUri }}
+                    style={styles.leagueLogo}
+                    resizeMode="contain"
+                  />
+                )}
+                <View>
+                  <Text style={styles.leagueText}>{match.league.name}</Text>
+                  <Text style={styles.leagueSubtitle}>{match.league.country || ""}</Text>
+                </View>
+              </View>
               <Text style={styles.dateText}>{getMatchDate()}</Text>
             </View>
 
             <View style={styles.teamsSection}>
               <View style={styles.teamColumn}>
-                <Text style={styles.teamName}>{match.homeTeam.name}</Text>
+                <View style={styles.teamRow}>
+                  {match.homeTeam.logo ? (
+                    <Image
+                      source={{ uri: match.homeTeam.logo }}
+                      style={[styles.teamLogo, styles.teamLogoSpacingRight]}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={[styles.teamLogoPlaceholder, styles.teamLogoSpacingRight]}>
+                      <Text style={styles.teamLogoPlaceholderText}>
+                        {match.homeTeam.name?.charAt(0)?.toUpperCase() ?? "?"}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.teamName}>{match.homeTeam.name}</Text>
+                </View>
               </View>
               <View style={styles.vsContainer}>
                 <Text style={styles.timeText}>{getMatchTime()}</Text>
                 <Text style={styles.vsText}>VS</Text>
               </View>
               <View style={styles.teamColumn}>
-                <Text style={[styles.teamName, styles.teamNameRight]}>
-                  {match.awayTeam.name}
-                </Text>
+                <View style={[styles.teamRow, styles.teamRowRight]}>
+                  <Text style={[styles.teamName, styles.teamNameRight]}>
+                    {match.awayTeam.name}
+                  </Text>
+                  {match.awayTeam.logo ? (
+                    <Image
+                      source={{ uri: match.awayTeam.logo }}
+                      style={[styles.teamLogo, styles.teamLogoSpacingLeft]}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={[styles.teamLogoPlaceholder, styles.teamLogoSpacingLeft]}>
+                      <Text style={styles.teamLogoPlaceholderText}>
+                        {match.awayTeam.name?.charAt(0)?.toUpperCase() ?? "?"}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
+            </View>
+
+            <View style={styles.locationRow}>
+              <Text style={styles.locationLabel}>Lugar:</Text>
+              <Text style={styles.locationValue} numberOfLines={1} ellipsizeMode="tail">
+                {match.homeTeam.stadium || match.league.country || "Por confirmar"}
+              </Text>
             </View>
 
             <View style={styles.mainBetsSection}>
@@ -745,7 +796,23 @@ const createStyles = (colors: ThemeColors) =>
     matchHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: spacing.lg,
+    },
+    leagueInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    leagueLogo: {
+      width: 32,
+      height: 32,
+      borderRadius: borderRadius.md,
+      backgroundColor: colors.border,
+      marginRight: spacing.sm,
+    },
+    leagueSubtitle: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
     },
     leagueText: {
       fontSize: fontSize.sm,
@@ -773,9 +840,54 @@ const createStyles = (colors: ThemeColors) =>
     teamNameRight: {
       textAlign: "right",
     },
+    teamRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    teamRowRight: {
+      justifyContent: "flex-end",
+    },
+    teamLogo: {
+      width: 36,
+      height: 36,
+    },
+    teamLogoSpacingRight: {
+      marginRight: spacing.sm,
+    },
+    teamLogoSpacingLeft: {
+      marginLeft: spacing.sm,
+    },
+    teamLogoPlaceholder: {
+      width: 36,
+      height: 36,
+      borderRadius: borderRadius.xl,
+      backgroundColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    teamLogoPlaceholderText: {
+      color: colors.muted.foreground,
+      fontWeight: fontWeight.bold,
+    },
     vsContainer: {
       alignItems: "center",
       paddingHorizontal: spacing.md,
+    },
+    locationRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      marginBottom: spacing.lg,
+    },
+    locationLabel: {
+      fontSize: fontSize.sm,
+      color: colors.muted.foreground,
+    },
+    locationValue: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
+      color: colors.foreground,
+      flex: 1,
     },
     timeText: {
       fontSize: fontSize.lg,

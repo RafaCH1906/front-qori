@@ -1,19 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { View, Text, ActivityIndicator, StyleSheet, useWindowDimensions } from "react-native";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { View, Text, ActivityIndicator, StyleSheet, useWindowDimensions, TouchableOpacity } from "react-native";
 import MatchCard from "@/components/match-card";
 import { spacing, fontSize, fontWeight, ThemeColors, borderRadius } from "@/constants/theme";
 import { Match } from "@/constants/matches";
 import { useTheme } from "@/context/theme-context";
-import { getUpcomingMatches, getLeagues, getOdds, getOptions } from "@/lib/api/matches";
+import { getUpcomingMatches } from "@/lib/api/matches";
 import { MatchDTO } from "@/lib/types";
-import { Ionicons } from "@expo/vector-icons";
 import { getDeviceType } from "@/lib/platform-utils";
-
-interface LocalLeague {
-  id: number;
-  name: string;
-  country?: string;
-}
 
 interface BettingContentProps {
   onAddBet: (bet: any) => void;
@@ -25,11 +18,11 @@ const MATCHES_PER_PAGE = 5;
 
 export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }: BettingContentProps) {
   const [matches, setMatches] = useState<MatchDTO[]>([]);
-  const [leagues, setLeagues] = useState<LocalLeague[]>([]);
-  const [odds, setOdds] = useState<any[]>([]);
-  const [options, setOptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
@@ -41,49 +34,69 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
 
   useEffect(() => {
     isMounted.current = true;
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const [matchesData, leaguesData, oddsData, optionsData] = await Promise.all([
-          getUpcomingMatches(MATCHES_PER_PAGE),
-          getLeagues(),
-          getOdds(),
-          getOptions(),
-        ]);
-
-        if (isMounted.current) {
-          setMatches(matchesData);
-          setLeagues(leaguesData);
-          setOdds(oddsData);
-          setOptions(optionsData);
-        }
-      } catch (err: any) {
-        console.error("Failed to fetch data:", err);
-        if (isMounted.current) {
-          setError(
-            err.response?.status === 404
-              ? "No matches found"
-              : "Unable to load data. Please check your connection."
-          );
-        }
-      } finally {
-        if (isMounted.current) setLoading(false);
-      }
-    };
-    fetchData();
     return () => {
       isMounted.current = false;
     };
   }, []);
 
-  const filteredMatches = useMemo(() => {
-    if (!selectedLeague) return matches;
-    return matches.filter((m) => m.league && m.league.id === selectedLeague);
-  }, [matches, selectedLeague]);
+  const fetchMatches = useCallback(
+    async (targetPage: number, append: boolean) => {
+      const leagueFilter = selectedLeague;
+      try {
+        if (!append) {
+          setLoading(true);
+          setError(null);
+        } else {
+          setIsLoadingMore(true);
+        }
+
+        const matchesData = await getUpcomingMatches({
+          page: targetPage,
+          limit: MATCHES_PER_PAGE,
+          leagueId: leagueFilter ?? undefined,
+        });
+
+        if (!isMounted.current) return;
+        if (leagueFilter !== selectedLeague) return;
+
+        setMatches((prev) => (append ? [...prev, ...matchesData] : matchesData));
+        setHasMore(matchesData.length === MATCHES_PER_PAGE);
+        setPage(targetPage);
+      } catch (err: any) {
+        console.error("Failed to fetch matches:", err);
+        if (!append && isMounted.current) {
+          setError(
+            err.response?.status === 404
+              ? "No se encontraron partidos"
+              : "No se pudieron cargar los partidos. Verifica tu conexión."
+          );
+        }
+      } finally {
+        if (!append) {
+          if (isMounted.current) setLoading(false);
+        } else if (isMounted.current) {
+          setIsLoadingMore(false);
+        }
+      }
+    },
+    [selectedLeague]
+  );
+
+  useEffect(() => {
+    setMatches([]);
+    setPage(0);
+    setHasMore(true);
+    fetchMatches(0, false);
+  }, [fetchMatches]);
+
+  const handleLoadMore = () => {
+    if (isLoadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    fetchMatches(nextPage, true);
+  };
 
   const convertedMatches: Match[] = useMemo(() => {
-    return filteredMatches.map((m) => ({
+    return matches.map((m) => ({
       id: m.id,
       league: m.league ? m.league.id.toString() : "",
       homeTeam: m.homeTeam?.name ?? "",
@@ -94,11 +107,13 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
         draw: m.drawOdds ?? 0,
         away: m.awayOdds ?? 0
       },
+      homeLogo: m.homeTeam?.logo,
+      awayLogo: m.awayTeam?.logo,
       localOptionId: m.localOptionId,
       drawOptionId: m.drawOptionId,
       awayOptionId: m.awayOptionId,
     }));
-  }, [filteredMatches]);
+  }, [matches]);
 
   if (loading && matches.length === 0) {
     return (
@@ -115,7 +130,7 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
         <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorText}>{error}</Text>
         <Text style={styles.errorHint}>
-          {error.includes("connection") ? "Make sure the backend server is running" : "Try refreshing the page"}
+          {error.includes("conexión") ? "Asegúrate de que el backend esté en ejecución" : "Intenta actualizar la pantalla"}
         </Text>
       </View>
     );
@@ -134,13 +149,30 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
             <Text style={styles.emptyText}>No hay partidos próximos</Text>
           </View>
         ) : (
-          <View style={[styles.matchesList, isDesktop && styles.matchesGrid]}>
-            {convertedMatches.map((match) => (
-              <View key={match.id} style={[styles.matchItem, isDesktop && styles.matchItemDesktop]}>
-                <MatchCard match={match} onAddBet={onAddBet} onOpenMatch={() => onOpenMatch(match)} />
-              </View>
-            ))}
-          </View>
+          <>
+            <View style={[styles.matchesList, isDesktop && styles.matchesGrid]}>
+              {convertedMatches.map((match) => (
+                <View key={match.id} style={[styles.matchItem, isDesktop && styles.matchItemDesktop]}>
+                  <MatchCard match={match} onAddBet={onAddBet} onOpenMatch={() => onOpenMatch(match)} />
+                </View>
+              ))}
+            </View>
+
+            {hasMore && (
+              <TouchableOpacity
+                style={[styles.loadMoreButton, isLoadingMore && styles.paginationButtonDisabled]}
+                onPress={handleLoadMore}
+                disabled={isLoadingMore}
+                activeOpacity={0.8}
+              >
+                {isLoadingMore ? (
+                  <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                ) : (
+                  <Text style={styles.loadMoreText}>Cargar más partidos</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </View>
     </View>

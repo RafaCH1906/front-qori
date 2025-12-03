@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from "react-native";
+import { View, Text, Image, TouchableOpacity, StyleSheet, useWindowDimensions } from "react-native";
 import { Card } from "@/components/ui/card";
 import {
   spacing,
@@ -22,6 +22,8 @@ interface MatchCardProps {
     localOptionId?: number;
     drawOptionId?: number;
     awayOptionId?: number;
+    homeLogo?: string;
+    awayLogo?: string;
   };
   onAddBet: (bet: any) => void;
   onOpenMatch: () => void;
@@ -72,6 +74,25 @@ export default function MatchCard({
     });
   };
 
+  const renderTeamInfo = (name: string, logo?: string, alignRight = false) => (
+    <View style={[styles.teamBlock, alignRight && styles.teamBlockRight]}>
+      {logo ? (
+        <Image source={{ uri: logo }} style={styles.teamLogo} resizeMode="contain" />
+      ) : (
+        <View style={styles.logoPlaceholder}>
+          <Text style={styles.logoPlaceholderText}>{name?.charAt(0)?.toUpperCase() ?? "?"}</Text>
+        </View>
+      )}
+      <Text
+        style={[styles.teamText, alignRight && styles.teamTextRight]}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
+        {name}
+      </Text>
+    </View>
+  );
+
   return (
     <Card style={styles.card}>
       <TouchableOpacity
@@ -81,11 +102,9 @@ export default function MatchCard({
       >
         <Text style={styles.timeText}>{match.time}</Text>
         <View style={styles.teamsContainer}>
-          <Text style={styles.teamText}>{match.homeTeam}</Text>
+          {renderTeamInfo(match.homeTeam, match.homeLogo)}
           <Text style={styles.vsText}>vs</Text>
-          <Text style={[styles.teamText, styles.teamTextRight]}>
-            {match.awayTeam}
-          </Text>
+          {renderTeamInfo(match.awayTeam, match.awayLogo, true)}
         </View>
       </TouchableOpacity>
 
@@ -196,9 +215,36 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
       color: colors.foreground,
       fontSize: variant === 'large' ? fontSize.lg : fontSize.base,
       flex: 1,
+      marginLeft: spacing.sm,
     },
     teamTextRight: {
       textAlign: "right",
+    },
+    teamBlock: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    teamBlockRight: {
+      justifyContent: "flex-end",
+    },
+    teamLogo: {
+      width: variant === 'large' ? 40 : 32,
+      height: variant === 'large' ? 40 : 32,
+      marginRight: spacing.sm,
+    },
+    logoPlaceholder: {
+      width: variant === 'large' ? 40 : 32,
+      height: variant === 'large' ? 40 : 32,
+      borderRadius: borderRadius.xl,
+      backgroundColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: spacing.sm,
+    },
+    logoPlaceholderText: {
+      color: colors.muted.foreground,
+      fontWeight: fontWeight.bold,
     },
     vsText: {
       fontSize: fontSize.xs,

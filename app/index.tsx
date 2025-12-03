@@ -246,7 +246,7 @@ function IndexScreen() {
       <>
         <LeaguesBar
           selectedLeagueId={selectedLeague}
-          onLeagueSelect={(league) => setSelectedLeague(league ? league.id : null)}
+          onLeagueSelect={(leagueId) => setSelectedLeague(leagueId)}
         />
         <BettingContent
           onAddBet={handleAddBet}

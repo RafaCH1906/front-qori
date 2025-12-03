@@ -5,8 +5,10 @@ export interface League {
     name: string;
     type: string;
     country: string;
-    logo: string;
-    Category: string;
+    logo?: string | null;
+    logoUrl?: string | null;
+    Category?: string;
+    idApi?: number;
 }
 
 export const getLeagues = async (): Promise<League[]> => {

@@ -1,9 +1,25 @@
 import api from "./axios";
 import { MatchDTO, LeagueDTO } from "../types";
 
+interface UpcomingMatchesParams {
+    page?: number;
+    limit?: number;
+    leagueId?: number | null;
+}
 
-export const getUpcomingMatches = async (limit: number = 5): Promise<MatchDTO[]> => {
-    const { data } = await api.get(`/matches/upcoming?limit=${limit}`);
+export const getUpcomingMatches = async (
+    { page = 0, limit = 5, leagueId }: UpcomingMatchesParams = {}
+): Promise<MatchDTO[]> => {
+    const query = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+    });
+
+    if (typeof leagueId === "number") {
+        query.append("leagueId", leagueId.toString());
+    }
+
+    const { data } = await api.get(`/matches/upcoming?${query.toString()}`);
     return data;
 };
 
