@@ -87,15 +87,40 @@ function IndexScreen() {
       
       try {
         // Check if we have tokens from email verification
-        const accessToken = localStorage.getItem('accessToken');
+        const accessToken = localStorage.getItem('qoribet_verification_token');
+        const userDataStr = localStorage.getItem('qoribet_verification_user');
         
-        if (accessToken) {
-          console.log('Found verification token, saving to auth storage');
+        if (accessToken && userDataStr) {
+          console.log('Found verification data, saving to auth storage');
+          
+          // Save token
           await AuthStorage.saveToken(accessToken);
           
-          // Clear tokens from localStorage
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
+          // Parse and save user data
+          try {
+            const userData = JSON.parse(userDataStr);
+            // Map backend DTO to frontend UserData format
+            const mappedUserData = {
+              id: userData.id,
+              username: userData.username,
+              email: userData.email,
+              firstName: userData.firstName,
+              lastName: userData.firstLastName,
+              phone: userData.telephone,
+              role: userData.role,
+              freeBetsCount: userData.freeBetsCount || 0,
+              profilePhotoUrl: userData.profilePhotoUrl,
+            };
+            await AuthStorage.saveUserData(mappedUserData);
+            console.log('User data saved successfully');
+          } catch (parseError) {
+            console.error('Failed to parse user data:', parseError);
+          }
+          
+          // Clear verification data from localStorage
+          localStorage.removeItem('qoribet_verification_token');
+          localStorage.removeItem('qoribet_verification_refresh');
+          localStorage.removeItem('qoribet_verification_user');
           
           // Reload to update auth state
           window.location.reload();
