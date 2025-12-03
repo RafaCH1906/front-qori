@@ -64,10 +64,15 @@ export default function ShakeSensorScreen() {
         }
     };
 
-    const resetCounter = () => {
+    const resetCounter = () => 
+        {
         setShakeCount(0);
         setLastShake(null);
     };
+
+
+
+
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
