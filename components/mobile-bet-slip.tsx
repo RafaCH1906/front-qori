@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ interface MobileBetSlipProps {
   onPlaceBet: (stake: number, bets: Bet[], useFreeBet?: boolean) => Promise<void>;
 }
 
+const MOBILE_BET_SLIP_MAX_HEIGHT = 400;
+
 export default function MobileBetSlip({
   bets,
   onRemoveBet,
@@ -33,33 +35,75 @@ export default function MobileBetSlip({
   const [isExpanded, setIsExpanded] = useState(false);
   const styles = createStyles(colors);
 
-  return (
-    <View style={styles.container}>
-      {/* Collapsed Header - Always Visible */}
-      <TouchableOpacity
-        style={styles.header}
-        onPress={() => setIsExpanded(!isExpanded)}
-        activeOpacity={0.8}
-      >
-        <View style={styles.headerLeft}>
-          <Ionicons name="receipt-outline" size={20} color={colors.primary.foreground} />
-          <Text style={styles.headerText}>My Bets</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{bets.length} selected</Text>
-          </View>
-          <Ionicons
-            name={isExpanded ? "chevron-down" : "chevron-up"}
-            size={24}
-            color={colors.primary.foreground}
-          />
-        </View>
-      </TouchableOpacity>
+  const sheetHeight = useRef(new Animated.Value(0)).current;
+  const sheetOpacity = useRef(new Animated.Value(0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(20)).current;
+  const toggleTranslateY = useRef(new Animated.Value(0)).current;
 
-      {/* Expanded Content */}
-      {isExpanded && (
-        <View style={styles.content}>
+  useEffect(() => {
+    if (isExpanded) {
+      Animated.parallel([
+        Animated.timing(sheetHeight, {
+          toValue: MOBILE_BET_SLIP_MAX_HEIGHT,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(sheetOpacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(toggleTranslateY, {
+          toValue: -8,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(sheetHeight, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: false,
+        }),
+        Animated.timing(sheetOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: 20,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(toggleTranslateY, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isExpanded]);
+
+  return (
+    <Animated.View style={styles.container}>
+      <Animated.View
+        pointerEvents={isExpanded ? "auto" : "none"}
+        style={[
+          styles.sheetContainer,
+          {
+            height: sheetHeight,
+            opacity: sheetOpacity,
+            transform: [{ translateY: sheetTranslateY }],
+          },
+        ]}
+      >
+        <View style={styles.sheetInner}>
           <BetSlip
             bets={bets}
             onRemoveBet={onRemoveBet}
@@ -67,8 +111,33 @@ export default function MobileBetSlip({
             showHeader={false}
           />
         </View>
-      )}
-    </View>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.toggleWrapper,
+          { transform: [{ translateY: toggleTranslateY }] },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.toggle}
+          activeOpacity={0.85}
+          onPress={() => setIsExpanded(!isExpanded)}
+        >
+          <View>
+            <Text style={styles.toggleLabel}>My Bets</Text>
+            <Text style={styles.toggleCount}>
+              {bets.length} selected
+            </Text>
+          </View>
+          <Ionicons
+            name={isExpanded ? "chevron-down" : "chevron-up"}
+            size={20}
+            color={colors.primary.foreground}
+          />
+        </TouchableOpacity>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
@@ -76,48 +145,63 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: {
       position: "absolute",
-      bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.background,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      maxHeight: "80%",
+      bottom: 0,
+      paddingHorizontal: spacing.md,
+      paddingBottom: spacing.lg,
+      paddingTop: spacing.md,
+      gap: spacing.sm,
+      alignItems: "stretch",
+      zIndex: 100,
     },
-    header: {
+    sheetContainer: {
+      marginBottom: spacing.sm,
+      padding: spacing.xs,
+      backgroundColor: colors.background,
+      borderRadius: borderRadius.xl,
+      maxHeight: MOBILE_BET_SLIP_MAX_HEIGHT,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: "#000",
+      shadowOpacity: 0.15,
+      shadowOffset: { width: 0, height: 6 },
+      shadowRadius: 12,
+      elevation: 8,
+      overflow: "visible",
+    },
+    sheetInner: {
+      borderRadius: borderRadius.lg,
+      overflow: "hidden",
+      flex: 1,
+      maxHeight: MOBILE_BET_SLIP_MAX_HEIGHT - spacing.xs * 2,
+    },
+    toggleWrapper: {
+      width: "100%",
+    },
+    toggle: {
+      backgroundColor: colors.primary.DEFAULT,
+      borderRadius: 999,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.primary.DEFAULT,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      backgroundColor: colors.primary.DEFAULT,
-      padding: spacing.md,
+      shadowColor: "#000",
+      shadowOpacity: 0.1,
+      shadowOffset: { width: 0, height: 4 },
+      shadowRadius: 8,
+      elevation: 6,
     },
-    headerLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.sm,
-    },
-    headerText: {
-      fontSize: fontSize.base,
-      fontWeight: fontWeight.bold,
+    toggleLabel: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
       color: colors.primary.foreground,
     },
-    headerRight: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.sm,
-    },
-    badge: {
-      backgroundColor: colors.primary.foreground,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs / 2,
-      borderRadius: borderRadius.full,
-    },
-    badgeText: {
+    toggleCount: {
       fontSize: fontSize.xs,
-      fontWeight: fontWeight.semibold,
-      color: colors.primary.DEFAULT,
-    },
-    content: {
-      maxHeight: "90%",
+      color: colors.primary.foreground,
     },
   });
