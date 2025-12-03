@@ -4,8 +4,8 @@ import MatchCard from "@/components/match-card";
 import { spacing, fontSize, fontWeight, ThemeColors, borderRadius } from "@/constants/theme";
 import { Match } from "@/constants/matches";
 import { useTheme } from "@/context/theme-context";
-import { getUpcomingMatches } from "@/lib/api/matches";
-import { MatchDTO } from "@/lib/types";
+import { getUpcomingMatches, getMarketsByMatch } from "@/lib/api/matches";
+import { MatchDTO, MarketDTO } from "@/lib/types";
 import { getDeviceType } from "@/lib/platform-utils";
 
 interface BettingContentProps {

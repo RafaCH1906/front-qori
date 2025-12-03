@@ -3,6 +3,7 @@ export interface TeamDTO {
     name: string;
     country?: string;
     logo?: string;
+    stadium?: string;
 }
 
 export interface LeagueDTO {

@@ -282,16 +282,15 @@ export default function AuthModal({
         return;
       }
 
-      // Temporarily disabled for testing
-      // if (isInPeru === false) {
-      //   Alert.alert(
-      //     "Servicio No Disponible",
-      //     "Lo sentimos, QORIBET está disponible únicamente en Perú. Tu ubicación actual indica que no te encuentras en el territorio peruano.",
-      //     [{ text: "Entendido" }]
-      //   );
-      //   logValidationAttempt('location', false, { reason: 'outside_peru', mode });
-      //   return;
-      // }
+      if (isInPeru === false) {
+        Alert.alert(
+          "Servicio No Disponible",
+          "Lo sentimos, QORIBET está disponible únicamente en Perú. Tu ubicación actual indica que no te encuentras en el territorio peruano.",
+          [{ text: "Entendido" }]
+        );
+        logValidationAttempt('location', false, { reason: 'outside_peru', mode });
+        return;
+      }
 
       if (isInPeru === null) {
         Alert.alert(

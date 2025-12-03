@@ -295,12 +295,11 @@ function IndexScreen() {
   };
 
   return (
-    // <PeruOnlyGuard
-    //   loadingMessage="Verificando tu ubicación..."
-    //   deniedMessage="QORIBET solo está disponible en Perú"
-    //   showRetry={true}
-    // >
-    <>
+    <PeruOnlyGuard
+      loadingMessage="Verificando tu ubicación..."
+      deniedMessage="QORIBET solo está disponible en Perú"
+      showRetry={true}
+    >
       <SafeAreaView style={styles.safeArea}>
       <Header
         onLoginClick={() => handleAuthOpen("login")}
@@ -414,9 +413,8 @@ function IndexScreen() {
           <Text style={styles.giftEmoji}>🎁</Text>
         </TouchableOpacity>
       )}
-    </SafeAreaView>
-    </>
-    // </PeruOnlyGuard>
+      </SafeAreaView>
+    </PeruOnlyGuard>
   );
 }
 
