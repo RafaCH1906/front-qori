@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { Platform } from 'react-native';
 import { isUserInPeru, clearLocationCache, LocationResult, getPermissionStatus, PermissionStatus, requestLocationPermission } from '@/lib/services/location-service';
 
 interface LocationContextValue {
@@ -25,16 +26,29 @@ export function LocationProvider({ children, checkOnMount = true }: LocationProv
     const [error, setError] = useState<string | null>(null);
     const [locationData, setLocationData] = useState<LocationResult | null>(null);
     const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>('undetermined');
+    const isWeb = Platform.OS === 'web';
 
     const checkPermission = useCallback(async () => {
+        if (isWeb) {
+            setPermissionStatus('granted');
+            return 'granted';
+        }
         const status = await getPermissionStatus();
         setPermissionStatus(status);
         return status;
-    }, []);
+    }, [isWeb]);
 
     const checkLocation = useCallback(async () => {
         setIsLoading(true);
         setError(null);
+
+        if (isWeb) {
+            setPermissionStatus('granted');
+            setIsInPeru(true);
+            setLocationData(null);
+            setIsLoading(false);
+            return;
+        }
 
         try {
             // First check/ensure permission
@@ -79,15 +93,21 @@ export function LocationProvider({ children, checkOnMount = true }: LocationProv
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [isWeb]);
 
     const requestPermission = useCallback(async () => {
+        if (isWeb) {
+            setPermissionStatus('granted');
+            await checkLocation();
+            return;
+        }
+
         const status = await requestLocationPermission();
         setPermissionStatus(status);
         if (status === 'granted') {
             checkLocation();
         }
-    }, [checkLocation]);
+    }, [checkLocation, isWeb]);
 
     const clearCache = useCallback(() => {
         clearLocationCache();
