@@ -76,14 +76,14 @@ export default function MatchDetailScreen() {
         setError(null);
         const matchData = await getMatchById(parseInt(matchId as string));
         setMatch(matchData);
-        
+
         // Load markets for this match
         try {
           console.log("[MatchDetail] About to fetch markets for matchId:", matchId);
           const marketsData = await getMarketsByMatch(parseInt(matchId as string));
           console.log("[MatchDetail] Successfully fetched markets:", marketsData.length);
           console.log("Raw markets from API:", JSON.stringify(marketsData, null, 2));
-          
+
           // If markets don't have options, load them manually
           const marketsWithOptions = await Promise.all(
             marketsData.map(async (market: MarketDTO) => {
@@ -99,7 +99,7 @@ export default function MatchDetailScreen() {
               return market;
             })
           );
-          
+
           console.log("[MatchDetail] ========== MARKETS DEBUG ==========");
           console.log("[MatchDetail] Markets with options loaded:", marketsWithOptions.length);
           marketsWithOptions.forEach((market, index) => {
@@ -116,7 +116,7 @@ export default function MatchDetailScreen() {
             });
           });
           console.log("[MatchDetail] ====================================");
-          
+
           setMarkets(marketsWithOptions || []);
         } catch (marketErr) {
           console.error("Failed to fetch markets:", marketErr);
@@ -186,7 +186,7 @@ export default function MatchDetailScreen() {
 
     // Get the actual optionId from match data
     let optionId;
-    
+
     if (type === "home") optionId = match.localOptionId;
     else if (type === "draw") optionId = match.drawOptionId;
     else if (type === "away") optionId = match.awayOptionId;
@@ -358,7 +358,7 @@ export default function MatchDetailScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
             activeOpacity={0.7}
-            >
+          >
             <Ionicons name="arrow-back" size={24} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Detalles del Partido</Text>
@@ -596,7 +596,7 @@ export default function MatchDetailScreen() {
                   const getMarketTitle = (market: MarketDTO) => {
                     const type = market.type?.toUpperCase() || '';
                     const desc = market.description?.toLowerCase() || '';
-                    
+
                     if (type.includes('GOALS') || type.includes('GOLES') || desc.includes('gol')) {
                       return 'Total de goles';
                     }
@@ -611,7 +611,7 @@ export default function MatchDetailScreen() {
                     }
                     return market.description;
                   };
-                  
+
                   return (
                     <View key={market.id} style={styles.betCategoryCard}>
                       <Text style={styles.betCategoryTitle}>{getMarketTitle(market)}</Text>
@@ -624,12 +624,12 @@ export default function MatchDetailScreen() {
                             const isSelected = selectedBets.some(
                               bet => bet.id === option.id
                             );
-                            
+
                             // Format the option label
                             const formatOptionLabel = () => {
                               const optionName = option.name?.toUpperCase() || '';
                               const line = option.line || '';
-                              
+
                               if (optionName.includes('OVER')) {
                                 return `Más de ${line}`;
                               }
@@ -639,7 +639,7 @@ export default function MatchDetailScreen() {
                               // Fallback to original format
                               return option.description || `${option.name}${line ? ` ${line}` : ''}`;
                             };
-                            
+
                             return (
                               <TouchableOpacity
                                 key={option.id}

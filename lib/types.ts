@@ -10,6 +10,7 @@ export interface LeagueDTO {
     name: string;
     country?: string;
     logo?: string;
+    logoUrl?: string;
 }
 
 export interface MatchDTO {
@@ -51,10 +52,12 @@ export interface OptionDTO {
 export interface MarketOption {
     id: number;
     name: string; // HOME, AWAY, X, OVER, UNDER
+    marketId?: number;
     line?: number; // Para Over/Under (ej: 2.5)
     odd: number;
     scope: string; // TOTAL, HOME, AWAY
     description?: string;
+    active: boolean;
 }
 
 export interface MarketDTO {

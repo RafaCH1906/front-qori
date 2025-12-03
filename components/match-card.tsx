@@ -26,6 +26,7 @@ interface MatchCardProps {
     homeLogo?: string;
     awayLogo?: string;
   };
+  markets?: MarketDTO[];
   onAddBet: (bet: any) => void;
   onOpenMatch: () => void;
   variant?: 'compact' | 'standard' | 'large';
@@ -33,6 +34,7 @@ interface MatchCardProps {
 
 export default function MatchCard({
   match,
+  markets,
   onAddBet,
   onOpenMatch,
   variant,
@@ -73,20 +75,6 @@ export default function MatchCard({
       matchId: match.id,
       betType: "result",
     });
-  };
-
-  const formatMatchDate = (dateString?: string): string => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("es-ES", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-      });
-    } catch {
-      return "";
-    }
   };
 
   const renderTeamInfo = (name: string, logo?: string, alignRight = false) => (
@@ -222,6 +210,43 @@ export default function MatchCard({
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Market Preview - Over/Under 2.5 */}
+      {previewMarket && (
+        <View style={styles.previewMarketContainer}>
+          <Text style={styles.previewMarketTitle}>Goles {previewMarket.options[0].line}</Text>
+          <View style={styles.previewOptionsContainer}>
+            {previewMarket.options.map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                onPress={() => handleMarketBet(option.id, option.name, option.odd, previewMarket.market.type)}
+                style={[
+                  styles.previewOption,
+                  isMarketBetSelected(option.id) && styles.previewOptionSelected,
+                ]}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.previewOptionLabel,
+                    isMarketBetSelected(option.id) && styles.previewOptionLabelSelected,
+                  ]}
+                >
+                  {option.name === 'OVER' ? '+' : '-'}
+                </Text>
+                <Text
+                  style={[
+                    styles.previewOptionOdd,
+                    isMarketBetSelected(option.id) && styles.previewOptionOddSelected,
+                  ]}
+                >
+                  {option.odd.toFixed(2)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
     </Card>
   );
 }
@@ -338,6 +363,54 @@ const createStyles = (colors: ThemeColors, variant: 'compact' | 'standard' | 'la
       color: colors.primary.DEFAULT,
     },
     oddsValueSelected: {
+      color: "#1E293B",
+    },
+    previewMarketContainer: {
+      marginTop: spacing.sm,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    previewMarketTitle: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
+      marginBottom: spacing.xs,
+      fontWeight: fontWeight.medium,
+    },
+    previewOptionsContainer: {
+      flexDirection: 'row',
+      gap: spacing.xs,
+    },
+    previewOption: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: borderRadius.md,
+      paddingVertical: spacing.xs,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+      minHeight: 44,
+    },
+    previewOptionSelected: {
+      backgroundColor: "#FDB81E",
+      borderColor: "#FDB81E",
+    },
+    previewOptionLabel: {
+      fontSize: fontSize.xs,
+      color: colors.muted.foreground,
+      fontWeight: fontWeight.semibold,
+      marginBottom: 2,
+    },
+    previewOptionLabelSelected: {
+      color: "#1E293B",
+    },
+    previewOptionOdd: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.bold,
+      color: colors.primary.DEFAULT,
+    },
+    previewOptionOddSelected: {
       color: "#1E293B",
     },
   });

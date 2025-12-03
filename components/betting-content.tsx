@@ -23,6 +23,7 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [marketsCache, setMarketsCache] = useState<Record<number, MarketDTO[]>>({});
 
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
@@ -62,6 +63,22 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
         setMatches((prev) => (append ? [...prev, ...matchesData] : matchesData));
         setHasMore(matchesData.length === MATCHES_PER_PAGE);
         setPage(targetPage);
+
+        // Load markets for new matches asynchronously (don't block UI)
+        matchesData.forEach(async (match) => {
+          try {
+            const markets = await getMarketsByMatch(match.id);
+            if (isMounted.current) {
+              setMarketsCache((prev) => ({
+                ...prev,
+                [match.id]: markets,
+              }));
+            }
+          } catch (err) {
+            // Silently fail for markets - they're optional
+            console.warn(`Failed to load markets for match ${match.id}:`, err);
+          }
+        });
       } catch (err: any) {
         console.error("Failed to fetch matches:", err);
         if (!append && isMounted.current) {
@@ -154,7 +171,12 @@ export default function BettingContent({ onAddBet, onOpenMatch, selectedLeague }
             <View style={[styles.matchesList, isDesktop && styles.matchesGrid]}>
               {convertedMatches.map((match) => (
                 <View key={match.id} style={[styles.matchItem, isDesktop && styles.matchItemDesktop]}>
-                  <MatchCard match={match} onAddBet={onAddBet} onOpenMatch={() => onOpenMatch(match)} />
+                  <MatchCard
+                    match={match}
+                    markets={marketsCache[match.id]}
+                    onAddBet={onAddBet}
+                    onOpenMatch={() => onOpenMatch(match)}
+                  />
                 </View>
               ))}
             </View>
