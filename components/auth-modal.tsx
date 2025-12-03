@@ -36,7 +36,8 @@ import {
   isValidDate,
   calculateAge,
   ValidationResult,
-  validatePassword
+  validatePassword,
+  validatePasswordCharacters
 } from "@/lib/utils/validation-utils";
 interface AuthModalProps {
   isOpen: boolean;
@@ -159,9 +160,15 @@ export default function AuthModal({
 
     if (!password) newErrors.password = "La contraseña es obligatoria";
     else if (mode === "register") {
-      const pwdValidation = validatePassword(password);
-      if (!pwdValidation.isValid) {
-        newErrors.password = "La contraseña debe cumplir todos los requisitos";
+      // Check for invalid characters first
+      const charValidation = validatePasswordCharacters(password);
+      if (!charValidation.isValid) {
+        newErrors.password = charValidation.error || "La contraseña contiene caracteres inválidos";
+      } else {
+        const pwdValidation = validatePassword(password);
+        if (!pwdValidation.isValid) {
+          newErrors.password = "La contraseña debe cumplir todos los requisitos";
+        }
       }
     } else if (password.length < 8) {
       newErrors.password = "La contraseña debe tener al menos 8 caracteres";
@@ -670,11 +677,20 @@ export default function AuthModal({
                         value={password}
                         onChangeText={(text) => {
                           setPassword(text);
-                          if (errors.password) setErrors({ ...errors, password: "" });
-                          // Update password requirements in real-time
-                          if (mode === "register") {
-                            const requirements = validatePassword(text);
-                            setPasswordRequirements(requirements);
+
+                          // Check for invalid characters first in register mode
+                          if (mode === "register" && text) {
+                            const charValidation = validatePasswordCharacters(text);
+                            if (!charValidation.isValid) {
+                              setErrors({ ...errors, password: charValidation.error || "Caracteres inválidos" });
+                            } else {
+                              // Clear error and update password requirements
+                              if (errors.password) setErrors({ ...errors, password: "" });
+                              const requirements = validatePassword(text);
+                              setPasswordRequirements(requirements);
+                            }
+                          } else {
+                            if (errors.password) setErrors({ ...errors, password: "" });
                           }
                         }}
                         placeholder="••••••••"
