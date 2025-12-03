@@ -41,6 +41,7 @@ import { TabletLayout } from "@/components/layouts/tablet-layout";
 import { DesktopLayout } from "@/components/layouts/desktop-layout";
 import UnifiedBetPanel from "@/components/unified-bet-panel";
 import { PeruOnlyGuard } from "@/components/peru-only-guard";
+import { AuthStorage } from "@/lib/auth/storage";
 
 const MOBILE_BET_SLIP_MAX_HEIGHT = 420;
 const MOBILE_BET_SLIP_COLLAPSED_SPACE = 140;
@@ -77,6 +78,34 @@ function IndexScreen() {
       }
     };
     checkOnboarding();
+  }, []);
+
+  // Check for verification tokens on web platform
+  useEffect(() => {
+    const checkVerificationTokens = async () => {
+      if (Platform.OS !== 'web') return;
+      
+      try {
+        // Check if we have tokens from email verification
+        const accessToken = localStorage.getItem('accessToken');
+        
+        if (accessToken) {
+          console.log('Found verification token, saving to auth storage');
+          await AuthStorage.saveToken(accessToken);
+          
+          // Clear tokens from localStorage
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          
+          // Reload to update auth state
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Error checking verification tokens:', error);
+      }
+    };
+    
+    checkVerificationTokens();
   }, []);
 
   const collapsedPortalBottom = spacing.md;
